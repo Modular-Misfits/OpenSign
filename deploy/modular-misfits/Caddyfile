@@ -1,0 +1,33 @@
+{
+	admin off
+	auto_https off
+}
+
+:3001 {
+	encode zstd gzip
+
+	# Preserve existing Documenso signer links and its v2 API while the one
+	# in-flight envelope drains. OpenSign uses /login and /api/app, so these
+	# routes do not overlap its signing UI or Parse API.
+	@legacy_documenso path /sign/* /_next/* /api/v1/* /api/v2/* /api/trpc/* /api/auth/*
+	handle @legacy_documenso {
+		reverse_proxy host.docker.internal:3000
+	}
+
+	@api path /api/*
+	handle @api {
+		uri strip_prefix /api
+		reverse_proxy server:8080
+	}
+
+	handle {
+		reverse_proxy client:3000
+	}
+
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
+	}
+}

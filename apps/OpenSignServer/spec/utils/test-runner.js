@@ -15,8 +15,12 @@ let parseServerState = {};
  */
 export async function startParseServer() {
   delete config.databaseAdapter;
+  const databaseURI = process.env.TEST_DATABASE_URI;
+  if (!databaseURI?.startsWith('postgres')) {
+    throw new Error('TEST_DATABASE_URI must point to an isolated PostgreSQL test database');
+  }
   const parseServerOptions = Object.assign(config, {
-    databaseURI: 'mongodb://localhost:27017/parse-test',
+    databaseURI,
     masterKey: 'test',
     javascriptKey: 'test',
     appId: 'test',

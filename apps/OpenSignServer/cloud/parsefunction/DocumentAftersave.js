@@ -1,3 +1,5 @@
+import { deliverPortalWebhook } from '../portal/portalWebhook.js';
+
 async function DocumentAftersave(request) {
   try {
     if (!request.original) {
@@ -29,6 +31,22 @@ async function DocumentAftersave(request) {
           if (request?.object?.id) {
             await updateSelfDoc(request.object.id);
           }
+        }
+      }
+
+      if (request.object.get('PortalRequestId')) {
+        const wasCompleted = request.original.get('IsCompleted') === true;
+        const isCompleted = request.object.get('IsCompleted') === true;
+        const wasDeclined = request.original.get('IsDeclined') === true;
+        const isDeclined = request.object.get('IsDeclined') === true;
+        const previousAuditCount = request.original.get('AuditTrail')?.length || 0;
+        const auditCount = request.object.get('AuditTrail')?.length || 0;
+        if (!wasDeclined && isDeclined) {
+          await deliverPortalWebhook({ event: 'DOCUMENT_DECLINED', document: request.object });
+        } else if (!wasCompleted && isCompleted) {
+          await deliverPortalWebhook({ event: 'DOCUMENT_COMPLETED', document: request.object });
+        } else if (auditCount > previousAuditCount) {
+          await deliverPortalWebhook({ event: 'DOCUMENT_SIGNED', document: request.object });
         }
       }
     }
@@ -80,7 +98,7 @@ async function DocumentAftersave(request) {
     Query.include('CreatedBy');
     const updateACL = await Query.get(objId, { useMasterKey: true });
     const res = JSON.parse(JSON.stringify(updateACL));
-    const UsersPtr = res.Signers.map(item => item.UserId);
+    const UsersPtr = res.Signers.map(item => item.UserId).filter(Boolean);
 
     if (res.Signers[0].ExtUserPtr) {
       const ExtUserSigners = res.Signers.map(item => {

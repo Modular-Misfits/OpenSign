@@ -12,13 +12,44 @@ import { ApiPayloadConverter } from 'parse-server-api-mail-adapter';
 import S3Adapter from '@parse/s3-files-adapter';
 import FSFilesAdapter from '@parse/fs-files-adapter';
 import { app as customRoute } from './cloud/customRoute/customApp.js';
-import { exec } from 'child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createTransport } from 'nodemailer';
 import { appName, cloudServerUrl, serverAppId, smtpenable, smtpsecure, useLocal } from './Utils.js';
 import { SSOAuth } from './auth/authadapter.js';
 import runDbMigrations from './migrationdb/index.js';
 import { validateSignedLocalUrl } from './cloud/parsefunction/getSignedUrl.js';
 let fsAdapter;
+const execFileAsync = promisify(execFile);
+let isReady = false;
+
+function configuredOrigins() {
+  const raw = process.env.ALLOWED_ORIGINS || process.env.PUBLIC_URL || '';
+  return raw
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean)
+    .map(value => new URL(value).origin);
+}
+
+function corsOptions() {
+  const allowed = new Set(configuredOrigins());
+  return {
+    origin(origin, callback) {
+      if (!origin || allowed.has(origin)) return callback(null, true);
+      return callback(new Error('Origin is not allowed'));
+    },
+    credentials: true,
+  };
+}
+
+function postgresDatabaseUri() {
+  const value = process.env.DATABASE_URI;
+  if (!value?.startsWith('postgres')) {
+    throw new Error('DATABASE_URI must be a PostgreSQL connection string');
+  }
+  return value;
+}
 
 if (useLocal !== 'true') {
   try {
@@ -45,7 +76,7 @@ if (useLocal !== 'true') {
       },
     };
     fsAdapter = new S3Adapter(s3Options);
-  } catch (err) {
+  } catch {
     console.log('Please provide AWS credintials in env file! Defaulting to local storage.');
     fsAdapter = new FSFilesAdapter({
       filesSubDirectory: 'files', // optional, defaults to ./files
@@ -63,7 +94,7 @@ let mailgunDomain;
 let isMailAdapter = false;
 if (smtpenable) {
   try {
-    let transporterConfig = {
+    const transporterConfig = {
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT || 465,
       secure: smtpsecure,
@@ -95,15 +126,14 @@ if (smtpenable) {
     });
     mailgunDomain = process.env.MAILGUN_DOMAIN;
     isMailAdapter = true;
-  } catch (error) {
+  } catch {
     isMailAdapter = false;
     console.log('Please provide valid Mailgun credentials');
   }
 }
 const mailsender = smtpenable ? process.env.SMTP_USER_EMAIL : process.env.MAILGUN_SENDER;
 export const config = {
-  databaseURI:
-    process.env.DATABASE_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/dev',
+  databaseURI: postgresDatabaseUri(),
   cloud: function () {
     import('./cloud/main.js');
   },
@@ -112,7 +142,10 @@ export const config = {
   maxLimit: 500,
   maxUploadSize: '100mb',
   masterKey: process.env.MASTER_KEY, //Add your master key here. Keep it secret!
-  masterKeyIps: ['0.0.0.0/0', '::/0'], // '::1'
+  masterKeyIps: (process.env.MASTER_KEY_IPS || '127.0.0.1/32,::1/128')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean),
   serverURL: cloudServerUrl, // Don't forget to change to https if needed
   verifyUserEmails: false,
   publicServerURL: process.env.SERVER_URL || cloudServerUrl,
@@ -125,37 +158,37 @@ export const config = {
   encodeParseObjectInCloudFunction: true,
   ...(isMailAdapter === true
     ? {
-        emailAdapter: {
-          module: 'parse-server-api-mail-adapter',
-          options: {
-            // The email address from which emails are sent.
-            sender: appName + ' <' + mailsender + '>',
-            // The email templates.
-            templates: {
-              // The template used by Parse Server to send an email for password
-              // reset; this is a reserved template name.
-              passwordResetEmail: {
-                subjectPath: './files/password_reset_email_subject.txt',
-                textPath: './files/password_reset_email.txt',
-                htmlPath: './files/password_reset_email.html',
-              },
-              // The template used by Parse Server to send an email for email
-              // address verification; this is a reserved template name.
-              verificationEmail: {
-                subjectPath: './files/verification_email_subject.txt',
-                textPath: './files/verification_email.txt',
-                htmlPath: './files/verification_email.html',
-              },
+      emailAdapter: {
+        module: 'parse-server-api-mail-adapter',
+        options: {
+          // The email address from which emails are sent.
+          sender: appName + ' <' + mailsender + '>',
+          // The email templates.
+          templates: {
+            // The template used by Parse Server to send an email for password
+            // reset; this is a reserved template name.
+            passwordResetEmail: {
+              subjectPath: './files/password_reset_email_subject.txt',
+              textPath: './files/password_reset_email.txt',
+              htmlPath: './files/password_reset_email.html',
             },
-            apiCallback: async ({ payload, locale }) => {
-              if (mailgunClient) {
-                const mailgunPayload = ApiPayloadConverter.mailgun(payload);
-                await mailgunClient.messages.create(mailgunDomain, mailgunPayload);
-              } else if (transporterMail) await transporterMail.sendMail(payload);
+            // The template used by Parse Server to send an email for email
+            // address verification; this is a reserved template name.
+            verificationEmail: {
+              subjectPath: './files/verification_email_subject.txt',
+              textPath: './files/verification_email.txt',
+              htmlPath: './files/verification_email.html',
             },
           },
+          apiCallback: async ({ payload }) => {
+            if (mailgunClient) {
+              const mailgunPayload = ApiPayloadConverter.mailgun(payload);
+              await mailgunClient.messages.create(mailgunDomain, mailgunPayload);
+            } else if (transporterMail) await transporterMail.sendMail(payload);
+          },
         },
-      }
+      },
+    }
     : {}),
   filesAdapter: fsAdapter,
   auth: { google: { clientId: process.env.GOOGLE_CLIENT_ID }, sso: SSOAuth },
@@ -167,7 +200,8 @@ export const config = {
 // javascriptKey, restAPIKey, dotNetKey, clientKey
 
 export const app = express();
-app.use(cors());
+app.disable('x-powered-by');
+app.use(cors(corsOptions()));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use(function (req, res, next) {
@@ -177,7 +211,7 @@ app.use(function (req, res, next) {
   next();
 });
 function getUserIP(request) {
-  let forwardedFor = request.headers['x-forwarded-for'];
+  const forwardedFor = request.headers['x-forwarded-for'];
   if (forwardedFor) {
     if (forwardedFor.indexOf(',') > -1) {
       return forwardedFor.split(',')[0];
@@ -228,6 +262,10 @@ if (!process.env.TESTING) {
 // Mount your custom express app
 app.use('/', customRoute);
 
+app.get('/healthz', function (_req, res) {
+  res.status(isReady ? 200 : 503).json({ status: isReady ? 'ready' : 'starting' });
+});
+
 // Parse Server plays nicely with the rest of your web routes
 app.get('/', function (req, res) {
   res.status(200).send('opensign-server is running !!!');
@@ -239,25 +277,31 @@ if (!process.env.TESTING) {
   // Set the Keep-Alive and headers timeout to 100 seconds
   httpServer.keepAliveTimeout = 100000; // in milliseconds
   httpServer.headersTimeout = 100000; // in milliseconds
-  httpServer.listen(port, '0.0.0.0', function () {
-    console.log('opensign-server running on port ' + port + '.');
-    const isWindows = process.platform === 'win32';
-    // console.log('isWindows', isWindows);
-    runDbMigrations();
-    const migrate = isWindows
-      ? `set APPLICATION_ID=${serverAppId}&& set SERVER_URL=${cloudServerUrl}&& set MASTER_KEY=${process.env.MASTER_KEY}&& npx parse-dbtool migrate`
-      : `APPLICATION_ID=${serverAppId} SERVER_URL=${cloudServerUrl} MASTER_KEY=${process.env.MASTER_KEY} npx parse-dbtool migrate`;
-    exec(migrate, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Error: ${error.message}`);
-        return;
-      }
-
-      if (stderr) {
-        console.error(`Error: ${stderr}`);
-        return;
-      }
-      console.log(`Command output: ${stdout}`);
-    });
+  await new Promise((resolve, reject) => {
+    httpServer.once('error', reject);
+    httpServer.listen(port, '0.0.0.0', resolve);
   });
+  console.log('opensign-server running on port ' + port + '.');
+  try {
+    const executable = path.join(__dirname, 'node_modules', '.bin', 'parse-dbtool');
+    const { stdout, stderr } = await execFileAsync(executable, ['migrate'], {
+      env: {
+        ...process.env,
+        APPLICATION_ID: serverAppId,
+        SERVER_URL: cloudServerUrl,
+        MASTER_KEY: process.env.MASTER_KEY,
+      },
+      timeout: 120_000,
+      maxBuffer: 1024 * 1024,
+    });
+    if (stdout.trim()) console.log(stdout.trim());
+    if (stderr.trim()) console.warn(stderr.trim());
+    await runDbMigrations();
+    isReady = true;
+    console.log('opensign-server database migrations completed.');
+  } catch (error) {
+    console.error('OpenSign startup migration failed:', error);
+    await new Promise(resolve => httpServer.close(resolve));
+    process.exit(1);
+  }
 }

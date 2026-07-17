@@ -17,3 +17,7 @@ Start the isolated stack with:
 ```sh
 docker compose --env-file .env -f compose.yml up --build -d
 ```
+
+For a workstation-hosted production deployment, run `watchdog.sh` from a user
+LaunchAgent at login and once per minute. The watchdog starts Docker Desktop when
+needed, reconciles the Compose stack, and waits for the private health endpoint.

@@ -11,7 +11,7 @@
 	# routes do not overlap its signing UI or Parse API.
 	@legacy_documenso path /sign/* /_next/* /api/v1/* /api/v2/* /api/trpc/* /api/auth/*
 	handle @legacy_documenso {
-		reverse_proxy host.docker.internal:3000
+		reverse_proxy {$LEGACY_DOCUMENSO_UPSTREAM:host.docker.internal:3000}
 	}
 
 	@api path /api/*

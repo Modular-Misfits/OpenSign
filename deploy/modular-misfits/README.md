@@ -18,6 +18,18 @@ Start the isolated stack with:
 docker compose --env-file .env -f compose.yml up --build -d
 ```
 
+On the production Linux host, create the private cross-stack network and include
+the portability override so Caddy can reach the temporary legacy Documenso
+service without publishing it beyond loopback:
+
+```sh
+docker network create modular-misfits-esign-shared
+docker compose --env-file .env -f compose.yml -f compose.cloud.yml up --build -d
+```
+
+The Linux host must keep ports `3000` and `3100` bound to loopback. Public HTTP
+traffic enters only through Cloudflare Tunnel; PostgreSQL is never published.
+
 For a workstation-hosted production deployment, run `watchdog.sh` from a user
 LaunchAgent at login and once per minute. The watchdog starts Docker Desktop when
 needed, reconciles the Compose stack, and waits for the private health endpoint.

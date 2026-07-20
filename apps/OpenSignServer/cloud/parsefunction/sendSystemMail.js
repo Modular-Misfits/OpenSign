@@ -2,6 +2,7 @@ import formData from 'form-data';
 import Mailgun from 'mailgun.js';
 import { appName, smtpenable, smtpsecure, updateMailCount } from '../../Utils.js';
 import { createTransport } from 'nodemailer';
+import { deliverPortalSystemEmail } from '../portal/portalWebhook.js';
 async function sendMailProvider(req) {
   const app = appName;
   const extUserId = req.params?.extUserId || '';
@@ -50,6 +51,25 @@ async function sendMailProvider(req) {
       bcc: req.params.bcc ? req.params.bcc : undefined,
       replyTo: replyto ? replyto : undefined,
     };
+
+    // The Modular Misfits cloud deployment relays mail through its Cloudflare
+    // Worker binding. This avoids putting a location-restricted Cloudflare API
+    // token on the signing host while preserving OpenSign's existing mail API.
+    if (process.env.PORTAL_WEBHOOK_URL && process.env.PORTAL_WEBHOOK_SECRET) {
+      await deliverPortalSystemEmail({
+        recipient: req.params.recipient,
+        subject: req.params.subject,
+        text: messageParams.text,
+        html: messageParams.html,
+        replyTo: messageParams.replyTo,
+        fromName: from || app,
+      });
+      console.log('portal email relay accepted');
+      if (extUserId) {
+        await updateMailCount(extUserId);
+      }
+      return { status: 'success' };
+    }
 
     if (transporterSMTP) {
       const res = await transporterSMTP.sendMail(messageParams);

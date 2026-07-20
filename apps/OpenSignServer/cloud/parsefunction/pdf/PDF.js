@@ -337,7 +337,13 @@ async function sendMailsaveCertifcate(doc, pfx, isCustomMail, mailProvider, file
   if (doc.IsSendMail === false) {
     console.log("don't send mail");
   } else {
-    sendCompletedMail({ isCustomMail, doc, mailProvider, filename });
+    // Completion mail is secondary to the already-persisted signature. Keep
+    // any delivery/attachment failure from becoming an unhandled rejection
+    // that terminates the server while the browser awaits signPdf.
+    void sendCompletedMail({ isCustomMail, doc, mailProvider, filename }).catch(err => {
+      console.log('send completed mail error', err);
+      unlinkFile(certificatePath);
+    });
   }
   saveFileUsage(CertificateBuffer.length, file.imageUrl, doc?.CreatedBy?.objectId);
   unlinkFile(pfx.name);

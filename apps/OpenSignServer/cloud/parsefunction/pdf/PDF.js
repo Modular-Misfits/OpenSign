@@ -1,5 +1,7 @@
 import fs from 'node:fs';
-import { createHash } from 'node:crypto';
+import os from 'node:os';
+import path from 'node:path';
+import { createHash, randomUUID } from 'node:crypto';
 import axios from 'axios';
 import { PDFDocument } from 'pdf-lib';
 import {
@@ -384,7 +386,10 @@ async function processPdf(_resDoc, PdfBuffer, reason) {
 async function PDF(req) {
   const docId = req.params.docId;
   const randomNumber = Math.floor(Math.random() * 5000);
-  const pfxname = `keystore_${randomNumber}.pfx`;
+  // The production image runs as the unprivileged `node` user and /app itself
+  // is intentionally not writable. Keep the short-lived signing key in the
+  // container's private, writable tmpfs instead of the process working directory.
+  const pfxname = path.join(os.tmpdir(), `opensign-keystore-${randomUUID()}.pfx`);
   try {
     const userIP = req.headers['x-real-ip']; // client IPaddress
     const reqUserId = req.params.userId;
@@ -460,7 +465,7 @@ async function PDF(req) {
       }
       const pfx = { name: pfxname, passphrase: passphrase };
       const P12Buffer = Buffer.from(pfxFile, 'base64');
-      fs.writeFileSync(pfxname, P12Buffer);
+      fs.writeFileSync(pfxname, P12Buffer, { flag: 'wx', mode: 0o600 });
       const UserPtr = { __type: 'Pointer', className: className, objectId: signUser.objectId };
       const obj = { UserPtr: UserPtr, SignedUrl: '', Activity: auditActivity, ipAddress: userIP };
       let updateAuditTrail;

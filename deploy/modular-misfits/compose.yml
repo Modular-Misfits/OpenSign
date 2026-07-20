@@ -113,8 +113,6 @@ services:
         condition: service_healthy
     ports:
       - 127.0.0.1:${OPENSIGN_PORT:-3100}:3001
-    environment:
-      LEGACY_DOCUMENSO_UPSTREAM: ${LEGACY_DOCUMENSO_UPSTREAM:-host.docker.internal:3000}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     read_only: true

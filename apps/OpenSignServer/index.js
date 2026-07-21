@@ -202,6 +202,10 @@ export const config = {
 export const app = express();
 app.disable('x-powered-by');
 app.use(cors(corsOptions()));
+app.use(
+  '/portal/nda/webhooks/telnyx/failover',
+  express.raw({ type: 'application/json', limit: '128kb' })
+);
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use(function (req, res, next) {

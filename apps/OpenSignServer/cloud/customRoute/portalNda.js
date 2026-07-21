@@ -359,17 +359,49 @@ async function sendInitialSignerEmail(document, signer) {
   const senderName = document.get('SenderName') || 'Modular Misfits Agreements';
   const senderEmail = document.get('SenderMail') || process.env.PORTAL_OWNER_EMAIL;
   const title = document.get('Name');
+  const subject = `${senderName} has requested your signature on ${title}`;
+  const text = `Hello ${signer.name},
+
+${senderName} has requested your signature on ${title}.
+
+Review and sign the NDA:
+${signingUrl}
+
+This signing link is unique to you. Do not forward it.`;
   const result = await sendSystemMail({
     params: {
       extUserId: document.get('ExtUserPtr')?.id,
       recipient: signer.email,
-      subject: `${senderName} has requested your signature on ${title}`,
+      subject,
       from: senderName,
       replyto: senderEmail,
-      html: `<p>Hello ${escapeHtml(signer.name)},</p>
-        <p>${escapeHtml(senderName)} has requested your signature on <strong>${escapeHtml(title)}</strong>.</p>
-        <p><a href="${escapeHtml(signingUrl)}">Review and sign the NDA</a></p>
-        <p>This signing link is unique to you. Do not forward it.</p>`,
+      text,
+      html: `<!doctype html>
+        <html lang="en">
+          <body style="margin:0;padding:0;background:#f4f6f8;color:#18202a;font-family:Arial,Helvetica,sans-serif;">
+            <div style="display:none;max-height:0;overflow:hidden;opacity:0;">A mutual NDA is ready for your review and signature.</div>
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f8;padding:32px 16px;">
+              <tr>
+                <td align="center">
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border:1px solid #dfe5ea;border-radius:12px;">
+                    <tr>
+                      <td style="padding:32px;">
+                        <p style="margin:0 0 24px;color:#16878a;font-size:14px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">Modular Misfits Agreements</p>
+                        <h1 style="margin:0 0 20px;color:#101820;font-size:26px;line-height:1.25;">Signature requested</h1>
+                        <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">Hello ${escapeHtml(signer.name)},</p>
+                        <p style="margin:0 0 24px;font-size:16px;line-height:1.6;">${escapeHtml(senderName)} has requested your signature on <strong>${escapeHtml(title)}</strong>.</p>
+                        <p style="margin:0 0 28px;">
+                          <a href="${escapeHtml(signingUrl)}" style="display:inline-block;background:#16878a;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;line-height:1;padding:14px 22px;border-radius:8px;">Review and sign the NDA</a>
+                        </p>
+                        <p style="margin:0;color:#596673;font-size:13px;line-height:1.6;">This secure signing link is unique to you. Do not forward it.</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>`,
     },
   });
   if (result?.status !== 'success') {

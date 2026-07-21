@@ -4,6 +4,7 @@ import Mailgun from 'mailgun.js';
 import { smtpenable, smtpsecure, updateMailCount } from '../../Utils.js';
 import { createTransport } from 'nodemailer';
 import axios from 'axios';
+import { buildMailContent } from '../portal/mailContent.js';
 
 function safeUnlink(filePath, label = 'file') {
   if (fs.existsSync(filePath)) {
@@ -102,12 +103,19 @@ async function sendMailProvider(params) {
         const from = params.from || '';
         const mailsender = smtpenable ? process.env.SMTP_USER_EMAIL : process.env.MAILGUN_SENDER;
         const replyto = params?.replyto || '';
+        const content = buildMailContent({
+          html: params?.html,
+          portalMode: Boolean(process.env.PORTAL_WEBHOOK_URL && process.env.PORTAL_WEBHOOK_SECRET),
+          reportHtml: reportMsg,
+          subject: params.subject,
+          text: params.text,
+        });
         const messageParams = {
           from: from + ' <' + mailsender + '>',
           to: params.recipient,
           subject: params.subject,
-          text: params.text || 'mail',
-          html: params?.html ? params.html + reportMsg : '',
+          text: content.text,
+          html: content.html,
           attachments: smtpenable ? attachment : undefined,
           attachment: smtpenable ? undefined : attachment,
           bcc: params.bcc ? params.bcc : undefined,
@@ -150,12 +158,19 @@ async function sendMailProvider(params) {
       const from = params.from || '';
       const mailsender = smtpenable ? process.env.SMTP_USER_EMAIL : process.env.MAILGUN_SENDER;
       const replyto = params?.replyto || '';
+      const content = buildMailContent({
+        html: params?.html,
+        portalMode: Boolean(process.env.PORTAL_WEBHOOK_URL && process.env.PORTAL_WEBHOOK_SECRET),
+        reportHtml: reportMsg,
+        subject: params.subject,
+        text: params.text,
+      });
       const messageParams = {
         from: from + ' <' + mailsender + '>',
         to: params.recipient,
         subject: params.subject,
-        text: params.text || 'mail',
-        html: params?.html ? params.html + reportMsg : '',
+        text: content.text,
+        html: content.html,
         bcc: params.bcc ? params.bcc : undefined,
         cc: params.cc ? params.cc : undefined,
         replyTo: replyto ? replyto : undefined,

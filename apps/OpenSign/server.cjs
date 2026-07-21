@@ -71,6 +71,26 @@ function cacheControl(filePath) {
     : "no-cache";
 }
 
+function runtimeEnvScript() {
+  const values = {
+    REACT_APP_SERVERURL: process.env.REACT_APP_SERVERURL || "",
+  };
+  const serialized = JSON.stringify(values).replaceAll("<", "\\u003c");
+  return `window.RUNTIME_ENV = ${serialized};\n`;
+}
+
+function sendRuntimeEnv(req, res) {
+  const body = runtimeEnvScript();
+  res.writeHead(200, {
+    "Content-Type": "application/javascript; charset=utf-8",
+    "Content-Length": Buffer.byteLength(body),
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+  });
+  if (req.method === "HEAD") return res.end();
+  return res.end(body);
+}
+
 function streamFile(req, res, filePath, stats) {
   const headers = {
     "Content-Type": contentType(filePath),
@@ -127,6 +147,9 @@ const server = http.createServer((req, res) => {
   }
 
   const reqUrl = req.url || "/";
+  if (reqUrl.split("?", 1)[0] === "/env.js") {
+    return sendRuntimeEnv(req, res);
+  }
   const filePath = safeJoin(reqUrl);
   if (!filePath) {
     res.writeHead(400);

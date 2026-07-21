@@ -12,11 +12,12 @@
   "scripts": {
     "coverage": "TESTING=true nyc jasmine",
     "lint": "eslint --cache ./cloud && eslint --cache index.js && eslint --cache ./spec",
-    "lint:portal": "ESLINT_USE_FLAT_CONFIG=false eslint --no-eslintrc --config .eslintrc.json cloud/customRoute/portalNda.js cloud/customRoute/customApp.js cloud/portal/portalWebhook.js cloud/parsefunction/DocumentAftersave.js index.js migrationdb/index.js databases/migrations/20260716000000-add_portal_nda_fields.cjs spec/utils/test-runner.js spec/Tests.spec.js",
+    "lint:portal": "ESLINT_USE_FLAT_CONFIG=false eslint --no-eslintrc --config .eslintrc.json cloud/customRoute/portalNda.js cloud/customRoute/portalTelnyxFailover.js cloud/customRoute/customApp.js cloud/portal/portalWebhook.js cloud/parsefunction/DocumentAftersave.js index.js migrationdb/index.js databases/migrations/20260716000000-add_portal_nda_fields.cjs spec/portalTelnyxFailover.node.test.js spec/utils/test-runner.js spec/Tests.spec.js",
     "lint-fix": "eslint --cache --fix ./cloud && eslint --cache --fix index.js && eslint --cache --fix ./spec",
     "prettier": "prettier --write '{cloud,spec}/{**/*,*}.js' 'index.js'",
     "start": "node index.js",
     "test": "TESTING=true jasmine",
+    "test:portal-telnyx": "node --test spec/portalTelnyxFailover.node.test.js",
     "watch": "nodemon index.js"
   },
   "dependencies": {

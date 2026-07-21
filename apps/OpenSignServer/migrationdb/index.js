@@ -32,6 +32,26 @@ const migrations = [
           ON "contracts_Document" ("PortalRequestId")
           WHERE "PortalRequestId" IS NOT NULL`,
   },
+  {
+    name: 'portal_telnyx_failover_events_postgres_1',
+    sql: `CREATE TABLE IF NOT EXISTS portal_telnyx_failover_events (
+            event_id TEXT PRIMARY KEY,
+            raw_payload TEXT NOT NULL,
+            telnyx_signature TEXT NOT NULL,
+            telnyx_timestamp TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending'
+              CHECK (status IN ('pending', 'delivered')),
+            attempts INTEGER NOT NULL DEFAULT 0,
+            last_error TEXT,
+            received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            delivered_at TIMESTAMPTZ,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          );
+          CREATE INDEX IF NOT EXISTS portal_telnyx_failover_pending
+            ON portal_telnyx_failover_events (next_attempt_at, received_at)
+            WHERE status = 'pending'`,
+  },
 ];
 
 export default async function runDbMigrations() {

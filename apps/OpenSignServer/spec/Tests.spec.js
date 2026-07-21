@@ -1,33 +1,41 @@
 import axios from 'axios';
-describe('Parse Server example', () => {
-  Parse.User.enableUnsafeCurrentUser();
-  it('call function', async () => {
-    const result = await Parse.Cloud.run('hello');
-    expect(result).toBe('Hi');
+
+/* global describe, it, expect, fail */
+
+describe('OpenSign PostgreSQL server', () => {
+  it('serves the hardened application root', async () => {
+    const { data, headers, status } = await axios.get('http://localhost:30001/');
+    expect(status).toBe(200);
+    expect(headers['content-type']).toContain('text/html');
+    expect(data).toBe('opensign-server is running !!!');
   });
-  it('call async function', async () => {
-    const result = await Parse.Cloud.run('asyncFunction');
-    expect(result).toBe('Hi async');
+
+  it('does not report ready before startup migrations finish', async () => {
+    const response = await axios.get('http://localhost:30001/healthz', {
+      validateStatus: () => true,
+    });
+    expect(response.status).toBe(503);
+    expect(response.data).toEqual({ status: 'starting' });
   });
-  it('failing test', async () => {
-    const obj = new Parse.Object('Test');
+
+  it('protects the private portal bridge', async () => {
+    const response = await axios.post(
+      'http://localhost:30001/portal/v1/nda',
+      {},
+      { validateStatus: () => true }
+    );
+    expect(response.status).toBe(401);
+    expect(response.data.code).toBe('PORTAL_UNAUTHORIZED');
+  });
+
+  it('blocks arbitrary client-side class creation', async () => {
+    const object = new Parse.Object('UnapprovedClientClass');
     try {
-      await obj.save();
-      fail('should not have been able to save test object.');
-    } catch (e) {
-      expect(e).toBeDefined();
-      expect(e.code).toBe(9001);
-      expect(e.message).toBe('Saving test objects is not available.');
+      await object.save();
+      fail('Client-side class creation should be blocked.');
+    } catch (error) {
+      expect(error.code).toBe(119);
+      expect(error.message).toBe('Permission denied');
     }
-  });
-  it('coverage for /', async () => {
-    const { data, headers } = await axios.get('http://localhost:30001/');
-    expect(headers['content-type']).toContain('text/html');
-    expect(data).toBe('I dream of being a website.  Please star the parse-server repo on GitHub!');
-  });
-  it('coverage for /test', async () => {
-    const { data, headers } = await axios.get('http://localhost:30001/test');
-    expect(headers['content-type']).toContain('text/html');
-    expect(data).toContain('<title>Parse Server Example</title>');
   });
 });

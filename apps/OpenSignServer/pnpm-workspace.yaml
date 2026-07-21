@@ -1,0 +1,10 @@
+packages:
+  - .
+
+allowBuilds:
+  "@apollo/protobufjs": true
+  "@firebase/util": false
+  core-js-pure: false
+  parse-server: true
+  protobufjs: true
+  sharp: true

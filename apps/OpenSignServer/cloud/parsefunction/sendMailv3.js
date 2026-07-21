@@ -2,6 +2,8 @@ import formData from 'form-data';
 import Mailgun from 'mailgun.js';
 import { appName, smtpenable, smtpsecure, updateMailCount } from '../../Utils.js';
 import { createTransport } from 'nodemailer';
+import { deliverPortalSystemEmail } from '../portal/portalWebhook.js';
+import { buildMailContent } from '../portal/mailContent.js';
 async function sendMailProvider(req) {
   const app = appName;
   const extUserId = req.params?.extUserId || '';
@@ -13,7 +15,7 @@ async function sendMailProvider(req) {
     let mailgunClient;
     let mailgunDomain;
     if (smtpenable) {
-      let transporterConfig = {
+      const transporterConfig = {
         host: process.env.SMTP_HOST,
         port: process.env.SMTP_PORT || 465,
         secure: smtpsecure,
@@ -41,16 +43,43 @@ async function sendMailProvider(req) {
     const from = req.params.from || '';
     const mailsender = smtpenable ? process.env.SMTP_USER_EMAIL : process.env.MAILGUN_SENDER;
     const replyto = req.params?.replyto || '';
+    const portalMode = Boolean(process.env.PORTAL_WEBHOOK_URL && process.env.PORTAL_WEBHOOK_SECRET);
+    const content = buildMailContent({
+      html: req.params?.html,
+      portalMode,
+      reportHtml: reportMsg,
+      subject: req.params.subject,
+      text: req.params.text,
+    });
     const messageParams = {
       from: from + ' <' + mailsender + '>',
       to: req.params.recipient,
       subject: req.params.subject,
-      text: req.params.text || 'mail',
-      html: req.params?.html ? req.params.html + reportMsg : '',
+      text: content.text,
+      html: content.html,
       bcc: req.params.bcc ? req.params.bcc : undefined,
       cc: req.params.cc ? req.params.cc : undefined,
       replyTo: replyto ? replyto : undefined,
     };
+
+    // Sequential signer invitations are sent through sendmailv3. Route them
+    // through the same signed Cloudflare Worker relay as the initial invitation
+    // so they do not fall back to the Lightsail host's location-restricted SMTP.
+    if (portalMode) {
+      await deliverPortalSystemEmail({
+        recipient: req.params.recipient,
+        subject: req.params.subject,
+        text: messageParams.text,
+        html: messageParams.html,
+        replyTo: messageParams.replyTo,
+        fromName: from || app,
+      });
+      console.log('portal email relay accepted');
+      if (extUserId) {
+        await updateMailCount(extUserId);
+      }
+      return { status: 'success' };
+    }
 
     if (transporterSMTP) {
       const res = await transporterSMTP.sendMail(messageParams);

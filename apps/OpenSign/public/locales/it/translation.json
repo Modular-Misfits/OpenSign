@@ -800,6 +800,7 @@
   "quota-mail-info": "Per mantenere la qualità del servizio e prevenire lo spam, OpenSign consente fino a 15 email al mese con il piano gratuito. Esegui l'upgrade ora per l'invio illimitato di email.",
   "quota-mail-reset": "I tuoi crediti email per richieste di firma saranno ripristinati il",
   "quota-mail": "Hai raggiunto il limite di 15 email di richiesta di firma per questo mese. Passa al piano superiore per continuare a inviare email direttamente.",
+  "quota-mail-limit-reached": "Hai raggiunto il limite mensile di 15 crediti email. Effettua l'upgrade del tuo piano per continuare a inviare email direttamente.\nI tuoi crediti email verranno ripristinati il {{resetDate}}.",
   "quota-mail-tip": "Suggerimento: Puoi ancora firmare un numero <1>illimitato de documenti</1> condividendo manualmente il link della richiesta di firma.",
   "quota-mail-head": "Quota Raggiunta",
   "unauthorized-modal": "Non hai l'autorizzazione per eseguire questa azione, contatta {{adminEmail}}.",

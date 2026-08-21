@@ -800,6 +800,7 @@
   "quota-mail-info": "To maintain service quality and prevent spam, OpenSign allows up to 15 emails per month on the free plan. Upgrade now for unlimited email sending.",
   "quota-mail-reset": "Your signature request email credits will be reset on",
   "quota-mail": "You've reached your limit of 15 signature request emails for this month. Upgrade now to continue sending emails directly.",
+  "quota-mail-limit-reached": "You've reached your monthly limit of 15 email credits. Please upgrade your plan to continue sending emails directly.\nYour email credits will reset on {{resetDate}}",
   "quota-mail-tip": "Tip: You can still sign <1>unlimited documents</1> by manually sharing the signing request link.",
   "quota-mail-head": "Quota reached",
   "unauthorized-modal": "You don't have permission to perform this action, please contact {{adminEmail}}.",

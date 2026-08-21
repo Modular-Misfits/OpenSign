@@ -29,7 +29,7 @@ export default async function createDocumentFromApp(request) {
     docCls.set('URL', doc?.URL);
     docCls.set('ExtUserPtr', doc.ExtUserPtr);
     docCls.set('CreatedBy', doc.CreatedBy);
-
+    docCls.set('OriginIp', request?.headers?.['x-real-ip'] || '');
     if (doc.Description) {
       docCls.set('Description', doc.Description);
     }

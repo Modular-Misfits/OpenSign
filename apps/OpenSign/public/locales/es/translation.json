@@ -800,6 +800,7 @@
   "quota-mail-info": "Para mantener la calidad del servicio y prevenir el spam, OpenSign permite hasta 15 correos electrónicos por mes en el plan gratuito. Mejora tu plan ahora para envíos ilimitados de correos electrónicos.",
   "quota-mail-reset": "Los créditos de tu correo electrónico de solicitud de firma se restablecerán el",
   "quota-mail": "Has alcanzado tu límite de 15 solicitudes de firma por correo para este mes. Mejora ahora para continuar enviando correos.",
+  "quota-mail-limit-reached": "Has alcanzado tu límite mensual de 15 créditos de correo electrónico. Mejora tu plan para continuar enviando correos directamente.\nTus créditos de correo electrónico se restablecerán el {{resetDate}}.",
   "quota-mail-tip": "Consejo: Aún puedes firmar <1>documentos ilimitados</1> compartiendo manualmente el enlace de solicitud de firma.",
   "quota-mail-head": "Cuota alcanzada",
   "unauthorized-modal": "No tienes permisos para realizar esta acción, por favor, contacta a {{adminEmail}}.",

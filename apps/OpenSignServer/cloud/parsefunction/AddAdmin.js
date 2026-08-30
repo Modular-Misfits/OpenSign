@@ -96,8 +96,70 @@ async function saveUser(userDetails) {
     return { id: res.id, sessionToken: res.getSessionToken() };
   }
 }
+/**
+ * Is there already an administrator on this instance?
+ *
+ * Mirrors CheckAdminExist: an admin only counts once it has an OrganizationId,
+ * because addTeamAndOrg() assigns the role and the org together. A half-created
+ * admin must not lock out the bootstrap path.
+ */
+async function adminAlreadyExists() {
+  const q = new Parse.Query('contracts_Users');
+  q.equalTo('UserRole', 'contracts_Admin');
+  q.notEqualTo('IsDisabled', true);
+  const found = await q.find({ useMasterKey: true });
+  return found.some(u => u.get('OrganizationId'));
+}
+
+/**
+ * Create the instance administrator.
+ *
+ * SECURITY (2026-08-30). This function grants `contracts_Admin` — addTeamAndOrg()
+ * sets it unconditionally — and until now it never looked at who was calling.
+ * `Parse.Cloud.define('addadmin', AddAdmin)` carries no requireUser and no
+ * validator, so an anonymous POST to /api/app/functions/addadmin created a fully
+ * privileged administrator, complete with tenant, organization and a live
+ * session token. An authorized pentest confirmed it end to end against
+ * production.
+ *
+ * Two callers are legitimate, and nothing else is:
+ *
+ *   1. **First-run bootstrap.** Someone has to create the first admin, and by
+ *      definition no session exists yet. Allowed ONLY while no admin exists —
+ *      the same condition CheckAdminExist reports to the setup UI. Once the
+ *      first admin exists this door closes permanently.
+ *   2. **An existing admin** adding another, proven by their session.
+ *
+ * The caller's role is read from the server-side contracts_Users record keyed on
+ * request.user, never from request.params — the pattern addUser.js already uses,
+ * and the reason it is not vulnerable to this.
+ */
 export default async function AddAdmin(request) {
   const userDetails = request.params.userDetails;
+  if (!userDetails || typeof userDetails !== 'object') {
+    throw new Parse.Error(Parse.Error.INVALID_QUERY, 'userDetails is required.');
+  }
+
+  const bootstrap = !(await adminAlreadyExists());
+
+  if (!bootstrap) {
+    // Past first run: an authenticated administrator, or nobody.
+    if (!request.user) {
+      throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'Invalid session token.');
+    }
+    const callerQuery = new Parse.Query('contracts_Users');
+    callerQuery.equalTo('UserId', {
+      __type: 'Pointer',
+      className: '_User',
+      objectId: request.user.id,
+    });
+    callerQuery.notEqualTo('IsDisabled', true);
+    const caller = await callerQuery.first({ useMasterKey: true });
+    if (!caller || caller.get('UserRole') !== 'contracts_Admin') {
+      throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, 'Unauthorized.');
+    }
+  }
+
   const user = await saveUser(userDetails);
 
   try {

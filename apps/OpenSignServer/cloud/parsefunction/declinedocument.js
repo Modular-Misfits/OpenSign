@@ -54,7 +54,10 @@ export default async function declinedocument(request) {
   }
   try {
     const docCls = new Parse.Query('contracts_Document');
-    docCls.include('ExtUserPtr.TenantId,Placeholders.signerPtr,Signers');
+    // `Signers.UserId` must be included explicitly: including only `Signers`
+    // resolves the Contactbook rows but leaves their UserId as an unfetched
+    // pointer, and the authorization check below reads UserId.objectId.
+    docCls.include('ExtUserPtr.TenantId,Placeholders.signerPtr,Signers,Signers.UserId');
     docCls.notEqualTo('IsCompleted', true);
     docCls.notEqualTo('IsArchive', true);
     const updateDoc = await docCls.get(docId, { useMasterKey: true });
@@ -62,6 +65,31 @@ export default async function declinedocument(request) {
       const _doc = JSON.parse(JSON.stringify(updateDoc));
       const isEnableOTP = updateDoc?.get('IsEnableOTP') || false;
       const isCreator = _doc?.CreatedBy?.objectId === userId;
+      // SECURITY: `userId` arrives from request.params and was never checked
+      // against the document, so an anonymous caller could decline any non-OTP
+      // document and attribute it to anyone. A decliner must either hold a
+      // session, or name a contact who is actually a signer on this document —
+      // which is what the emailed guest link gives a legitimate signer.
+      if (!request?.user) {
+        // NOTE ON ID SPACES: `userId` here is a **_User** id, not a
+        // contracts_Contactbook id. The guest caller sends
+        // Signers.find(...).UserId.objectId (PdfRequestFiles.jsx), and it is
+        // stored below as a _User pointer in DeclineBy. Signers themselves are
+        // Contactbook objects, each carrying a UserId pointer to its _User. So
+        // membership must be tested against Signers[].UserId.objectId — matching
+        // Signers[].objectId would compare a _User id against a Contactbook id
+        // and never succeed, which would break the guest decline button.
+        const signers = Array.isArray(_doc?.Signers) ? _doc.Signers : [];
+        const isSigner = signers.some(
+          x => x?.UserId?.objectId === userId || x?.objectId === userId
+        );
+        if (!isSigner) {
+          throw new Parse.Error(
+            Parse.Error.OPERATION_FORBIDDEN,
+            'Not a signer on this document.'
+          );
+        }
+      }
       if (!isEnableOTP) {
         updateDoc.set('IsDeclined', true);
         updateDoc.set('DeclineReason', reason);

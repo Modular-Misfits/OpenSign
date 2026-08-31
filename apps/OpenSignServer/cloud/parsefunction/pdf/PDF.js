@@ -410,6 +410,22 @@ async function PDF(req) {
         throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'User is not authenticated.');
       }
     }
+    // SECURITY: omitting `userId` selects the document OWNER as the signing
+    // identity (the `else` branch below sets signUser = ExtUserPtr), and the
+    // signature is then produced with the tenant's PFX — or, when the tenant has
+    // none, with the deployment-wide PFX_BASE64. On a document with
+    // IsEnableOTP false, nothing above establishes who is calling, so an
+    // anonymous caller who knows only the docId could sign as the owner.
+    //
+    // Guests always supply `userId`: the request-signing flow passes
+    // `userId: signerObjectId` (apps/OpenSign/src/constant/Utils.js). The only
+    // caller that omits it is the owner's own self-sign page, SignyourselfPdf,
+    // which is routed under HomeLayout and therefore always has a session. So
+    // requiring a session on the owner branch costs nothing and closes the
+    // forgery.
+    if (!reqUserId && !req?.user) {
+      throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'User is not authenticated.');
+    }
     const _resDoc = resDoc?.toJSON();
     let signUser;
     let className;
@@ -420,6 +436,14 @@ async function PDF(req) {
       if (_contractUser) {
         signUser = _contractUser;
         className = 'contracts_Contactbook';
+      } else {
+        // SECURITY: `userId` must name an actual signer on THIS document.
+        // Without this, an unrecognised id fell through with `signUser`
+        // undefined and the request continued on to dereference it.
+        throw new Parse.Error(
+          Parse.Error.OPERATION_FORBIDDEN,
+          'Not a signer on this document.'
+        );
       }
     } else {
       className = 'contracts_Users';

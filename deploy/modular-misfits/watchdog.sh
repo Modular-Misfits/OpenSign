@@ -17,6 +17,11 @@ if [[ ! -f "${env_file}" ]]; then
   exit 1
 fi
 
+if ! "${deploy_dir}/preflight.sh" "${env_file}" >/dev/null; then
+  log "OpenSign watchdog found missing or invalid portal NDA assets"
+  exit 1
+fi
+
 if ! docker info >/dev/null 2>&1; then
   log "Docker is unavailable; starting Docker Desktop"
   /usr/bin/open -gj -a Docker

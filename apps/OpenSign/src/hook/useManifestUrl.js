@@ -8,8 +8,8 @@ export function useManifestUrl(appName, logo) {
       name: appName,
       start_url: start_url,
       display: "standalone",
-      theme_color: "#000000",
-      background_color: "#ffffff",
+      theme_color: "#080808",
+      background_color: "#040810",
       ...(logo && {
         icons: [
           { src: logo, type: "image/png", sizes: "64x64 32x32 24x24 16x16" },

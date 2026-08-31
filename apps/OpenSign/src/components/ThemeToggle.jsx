@@ -5,7 +5,7 @@ const ThemeToggle = () => {
 
   useEffect(() => {
     const storedTheme = localStorage.getItem("theme");
-    if (storedTheme === "dark") {
+    if (storedTheme !== "light") {
       setIsDark(true);
       document.documentElement.setAttribute("data-theme", "opensigndark");
     } else {

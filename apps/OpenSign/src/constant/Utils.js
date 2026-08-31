@@ -117,7 +117,7 @@ const applyDuplicateResponsesToPages = (pages = []) => {
 export function getEnv() {
   return window?.RUNTIME_ENV || {};
 }
-const appName = "OpenSign™";
+const appName = "Modular Misfits Agreements";
 
 export const defaultMailBody = `<p>Hi {{receiver_name}},</p><br><p>We hope this email finds you well. {{sender_name}}&nbsp;has requested you to review and sign&nbsp;{{document_title}}.</p><p>Your signature is crucial to proceed with the next steps as it signifies your agreement and authorization.</p><br><p><a href='{{signing_url}}' rel='noopener noreferrer' target='_blank'>Sign here</a></p><br><br><p>If you have any questions or need further clarification regarding the document or the signing process,  please contact the sender.</p><br><p>Thanks</p><p> Team ${appName}</p><br>`;
 export const defaultMailSubject = `{{sender_name}} has requested you to sign {{document_title}}`;
@@ -1503,7 +1503,7 @@ export const addInitialData = (signerPos, setXyPosition, value, userId) => {
 
 //function for embed document id
 export const embedDocId = async (pdfOriginalWH, pdfDoc, documentId) => {
-  const appName = "OpenSign™";
+  const appName = "Modular Misfits Agreements";
   // `fontBytes` is used to embed custom font in pdf
   const fontBytes = await fileasbytes(
     "https://cdn.opensignlabs.com/webfonts/times.ttf"
@@ -2835,8 +2835,8 @@ export const getAppLogo = async () => {
     if (tenant) {
       const resolvedFavicon =
         tenant?.favicon || tenant?.logo || appInfo.fev_Icon;
-      localStorage.setItem("appname", "OpenSign™");
-      localStorage.setItem("favicon", appInfo.fev_Icon);
+      localStorage.setItem("appname", appInfo.appName);
+      localStorage.setItem("favicon", resolvedFavicon);
       return {
         logo: tenant?.logo,
         favicon: resolvedFavicon,
@@ -3102,7 +3102,7 @@ export const handleToPrint = async (event, setIsDownloading, pdfDetails) => {
 };
 const downloadCertificate = async (certificate, isZip, asBlob) => {
   try {
-    const appName = "OpenSign™";
+    const appName = "Modular Misfits Agreements";
     const certificateUrl = certificate;
     if (isZip) {
       return certificateUrl;
@@ -4221,7 +4221,7 @@ function _removeWidgetAnnotations(pdfDoc) {
 }
 
 export const mailTemplate = (param) => {
-  const appName = "OpenSign™";
+  const appName = "Modular Misfits Agreements";
   const logo = `<div style='padding:10px'><img src='https://qikinnovation.ams3.digitaloceanspaces.com/logo.png' height='50' /></div>`;
 
   const subject = `${param.senderName} has requested you to sign "${param.title}"`;

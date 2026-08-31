@@ -80,71 +80,71 @@ module.exports = {
     themes: [
       {
         opensigndark: {
-          primary: "#007ACC", // VS Code blue - CTA & highlight color
-          "primary-content": "#FFFFFF",
+          primary: "#45BFC2", // Modular Misfits cyber teal
+          "primary-content": "#080808",
 
-          secondary: "#1F2937", // Sidebar background (darker slate)
-          "secondary-content": "#E5E7EB",
+          secondary: "#265573", // Structural blue
+          "secondary-content": "#E0E6EB",
 
-          accent: "#4A9EFF", // Lighter VS Code blue for hover, minor CTA
+          accent: "#D64640", // Misfit red
           "accent-content": "#FFFFFF",
 
-          neutral: "#3C3C3C", // VS Code inactive/disabled element background
-          "neutral-content": "#CCCCCC", // VS Code inactive text color
+          neutral: "#153854", // Deep navy controls
+          "neutral-content": "#E0E6EB",
 
-          "base-100": "#121212", // App background
-          "base-200": "#181818", // Slight elevation (cards)
-          "base-300": "#1E1E1E", // Further elevated items (panels)
-          "base-content": "#F3F4F6", // Main text color (soft white)
+          "base-100": "#0F1B29", // Glass-panel surface
+          "base-200": "#040810", // App background
+          "base-300": "#111C2E", // Elevated panels
+          "base-content": "#E0E6EB", // Silver text
 
-          info: "#2563EB", // For info panels like "Out for signature"
+          info: "#5D8499", // Slate blue status
           success: "#22C55E", // Optional: for completed docs or alerts
-          warning: "#FBBF24",
-          error: "#EF4444",
+          warning: "#D9A441",
+          error: "#D64640",
 
-          "--rounded-btn": "1.9rem",
+          "--rounded-btn": "0.5rem",
           "--tab-border": "2px",
-          "--tab-radius": "0.7rem",
+          "--tab-radius": "0.75rem",
 
           // Custom CSS variables for icon and button states
-          "--icon-color": "#CCCCCC",
-          "--icon-color-muted": "#999999",
-          "--icon-color-disabled": "#858585",
-          "--btn-disabled-bg": "#3C3C3C",
-          "--btn-disabled-color": "#CCCCCC",
-          "--btn-disabled-border": "#565656",
+          "--icon-color": "#C8D8EA",
+          "--icon-color-muted": "#8DA4C0",
+          "--icon-color-disabled": "#5D8499",
+          "--btn-disabled-bg": "#153854",
+          "--btn-disabled-color": "#8DA4C0",
+          "--btn-disabled-border": "#265573",
 
           // Optional polish
           "--navbar-padding": "0.8rem",
-          "--border-color": "#2C2C2C", // Card/table separation
-          "--tooltip-color": "#1F2937"
+          "--border-color": "#265573", // Card/table separation
+          "--tooltip-color": "#153854"
         }
       },
       {
         opensigncss: {
-          primary: "#002864",
-          "primary-content": "#cacccf",
-          secondary: "#29354a",
-          "secondary-content": "#c8d1e0",
-          accent: "#E10032",
-          "accent-content": "#ffd8d5",
-          neutral: "#c1ccdb",
-          "neutral-content": "#111312",
-          "base-100": "#ffffff",
-          "base-200": "#dedede",
-          "base-300": "#bebebe",
-          "base-content": "#161616",
-          info: "#00b6ff",
-          "info-content": "#f5f5f4",
-          success: "#00a96e",
-          "success-content": "#f5f5f4",
-          warning: "#ffbe00",
-          "warning-content": "#ccd9e8",
-          error: "#ffa1a7",
-          "error-content": "#16090a",
-          "--rounded-btn": "1.9rem",
+          primary: "#257A7D",
+          "primary-content": "#FFFFFF",
+          secondary: "#DCE7EF",
+          "secondary-content": "#0F2A40",
+          accent: "#D64640",
+          "accent-content": "#FFFFFF",
+          neutral: "#E8ECF0",
+          "neutral-content": "#0F2A40",
+          "base-100": "#F4F6F8",
+          "base-200": "#E8ECF0",
+          "base-300": "#DCE7EF",
+          "base-content": "#0F2A40",
+          info: "#5D8499",
+          "info-content": "#FFFFFF",
+          success: "#1A7F62",
+          "success-content": "#FFFFFF",
+          warning: "#9A6700",
+          "warning-content": "#FFFFFF",
+          error: "#B8302A",
+          "error-content": "#FFFFFF",
+          "--rounded-btn": "0.5rem",
           "--tab-border": "2px",
-          "--tab-radius": "0.7rem"
+          "--tab-radius": "0.75rem"
         }
       }
     ],

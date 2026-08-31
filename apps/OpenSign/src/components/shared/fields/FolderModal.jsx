@@ -7,8 +7,8 @@ import { useTranslation } from "react-i18next";
 const FolderModal = (props) => {
   const { t } = useTranslation();
   const appName =
-    "OpenSign™";
-  const drivename = appName === "OpenSign™" ? "OpenSign™" : "";
+    "Modular Misfits Agreements";
+  const drivename = appName === "Modular Misfits Agreements" ? "Modular Misfits Agreements" : "";
   const [clickFolder, setClickFolder] = useState("");
   const [folderList, setFolderList] = useState([]);
   const [tabList, setTabList] = useState([]);

@@ -3,7 +3,214 @@
 @tailwind utilities;
 
 body {
-  background-color: white;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 30% 10%, #111c2e 0%, #080d18 45%, #040810 100%);
+  color: var(--fallback-bc, oklch(var(--bc)));
+  font-family: Merriweather, Georgia, serif;
+}
+
+html,
+#root,
+#root > div {
+  min-height: 100%;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+button,
+input,
+select,
+textarea,
+.op-btn,
+.op-menu,
+.op-navbar {
+  font-family: Roboto, system-ui, sans-serif;
+}
+
+/* Modular Misfits brand lockup. The source image also contains a small wordmark,
+   so the crop exposes only the symbol and pairs it with accessible live text. */
+.mm-brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 64px;
+  color: var(--fallback-bc, oklch(var(--bc)));
+}
+
+.mm-brand-mark {
+  position: relative;
+  display: block;
+  width: 58px;
+  height: 54px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.45));
+}
+
+.mm-brand-mark img {
+  position: absolute;
+  top: 0;
+  left: -5px;
+  width: 68px;
+  height: 71px;
+  max-width: none;
+}
+
+.mm-brand-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+  text-transform: uppercase;
+  font-family: Roboto, system-ui, sans-serif;
+}
+
+.mm-brand-copy strong {
+  font-size: 1.1rem;
+  letter-spacing: 0.075em;
+  font-weight: 800;
+}
+
+.mm-brand-copy span {
+  margin-top: 0.45rem;
+  color: #45bfc2;
+  font-family: "Roboto Mono", "Fira Code", monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.mm-brand-lockup--compact {
+  min-height: 40px;
+  gap: 0.55rem;
+}
+
+.mm-brand-lockup--compact .mm-brand-mark {
+  width: 42px;
+  height: 40px;
+}
+
+.mm-brand-lockup--compact .mm-brand-mark img {
+  left: -4px;
+  width: 50px;
+  height: auto;
+}
+
+.mm-brand-lockup--compact .mm-brand-copy strong {
+  font-size: 0.82rem;
+}
+
+.mm-brand-lockup--compact .mm-brand-copy span {
+  margin-top: 0.3rem;
+  font-size: 0.5rem;
+}
+
+.mm-auth-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.mm-auth-card {
+  width: 100%;
+  max-width: 1120px;
+  box-sizing: border-box;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.mm-login-watermark {
+  display: block;
+  opacity: 0.78;
+  filter:
+    saturate(0.8)
+    contrast(1.05)
+    drop-shadow(0 20px 30px rgba(0, 0, 0, 0.38));
+}
+
+@media (max-width: 767px) {
+  .mm-auth-shell {
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .mm-auth-card {
+    width: calc(100% - 1.5rem);
+  }
+
+  .mm-brand-copy strong {
+    font-size: 0.92rem;
+  }
+}
+
+/* Mirror the Compound portal's floating glass surfaces without affecting PDF
+   canvases or signature widget geometry. */
+[data-theme="opensigndark"] body {
+  background:
+    radial-gradient(ellipse at 30% 10%, #111c2e 0%, #080d18 45%, #040810 100%);
+}
+
+[data-theme="opensigndark"] #root > .bg-base-200 {
+  background: transparent;
+}
+
+[data-theme="opensigndark"] .op-card,
+[data-theme="opensigndark"] .op-navbar,
+[data-theme="opensigndark"] .op-modal-box,
+[data-theme="opensigndark"] .op-dropdown-content {
+  border: 1px solid rgba(200, 220, 255, 0.12);
+  background-color: rgba(15, 27, 41, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 18px 48px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+[data-theme="opensigndark"] .op-input,
+[data-theme="opensigndark"] .op-select,
+[data-theme="opensigndark"] .op-textarea {
+  border-color: rgba(93, 132, 153, 0.72);
+  background-color: rgba(4, 8, 16, 0.62);
+}
+
+[data-theme="opensigndark"] .op-input:focus,
+[data-theme="opensigndark"] .op-select:focus,
+[data-theme="opensigndark"] .op-textarea:focus {
+  border-color: #45bfc2;
+  box-shadow: 0 0 0 2px rgba(69, 191, 194, 0.2);
+}
+
+[data-theme="opensigndark"] .op-btn-primary {
+  box-shadow: 0 6px 18px rgba(69, 191, 194, 0.2);
+}
+
+[data-theme="opensigndark"] .op-btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 8px 24px rgba(69, 191, 194, 0.28);
+}
+
+[data-theme="opensigncss"] body {
+  background: #e8ecf0;
+}
+
+[data-theme="opensigncss"] .op-card,
+[data-theme="opensigncss"] .op-navbar,
+[data-theme="opensigncss"] .op-modal-box,
+[data-theme="opensigncss"] .op-dropdown-content {
+  border: 1px solid rgba(38, 85, 115, 0.18);
+  background-color: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 16px 48px rgba(15, 42, 64, 0.12);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 /* Custom CSS to hide scrollbar */

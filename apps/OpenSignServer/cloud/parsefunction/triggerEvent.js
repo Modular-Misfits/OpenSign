@@ -35,6 +35,17 @@ export default async function triggerEvent(request) {
     }
 
     if (event === 'viewed' && contactId) {
+      // SECURITY: `contactId` arrives from request.params and was written into
+      // the audit trail unchecked, letting an anonymous caller forge a "Viewed"
+      // event for any contact on any document. Only accept a contact who is
+      // actually a signer on this document.
+      const signerQuery = new Parse.Query('contracts_Document');
+      signerQuery.select(['Signers']);
+      const signerDoc = await signerQuery.get(docId, { useMasterKey: true });
+      const signers = signerDoc?.toJSON()?.Signers || [];
+      if (!signers.some(x => x?.objectId === contactId)) {
+        return { message: 'Not a signer on this document.' };
+      }
       const auditTrail = Array.isArray(_docRes.AuditTrail) ? _docRes.AuditTrail : [];
       const contactPtr = {
         __type: 'Pointer',

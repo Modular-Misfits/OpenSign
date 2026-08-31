@@ -62,6 +62,18 @@ export default async function getPresignedUrl(url) {
   }
 }
 
+// Does `url` actually appear on this document/template? Checked against the
+// fields that legitimately carry file URLs, plus the audit trail, rather than
+// trusting the caller.
+function urlBelongsToObject(url, obj) {
+  if (!url || !obj) return false;
+  const direct = [obj.URL, obj.SignedUrl, obj.OriginalUrl];
+  if (direct.some(u => u && u === url)) return true;
+  const trail = Array.isArray(obj.AuditTrail) ? obj.AuditTrail : [];
+  if (trail.some(e => e?.SignedUrl === url)) return true;
+  return false;
+}
+
 export async function getSignedUrl(request) {
   try {
     const docId = request.params.docId || '';
@@ -71,6 +83,24 @@ export async function getSignedUrl(request) {
     if (docId || templateId) {
       try {
         if (url?.includes('/files/')) {
+          // SECURITY: this signed whatever `/files/` path the caller supplied,
+          // using a key derived from MASTER_KEY, with no check that the path
+          // belonged to the named document. That is a signing oracle for
+          // arbitrary file paths. Require the URL to actually appear on the
+          // object the caller named.
+          const ownerQuery = new Parse.Query(docId ? 'contracts_Document' : 'contracts_Template');
+          ownerQuery.equalTo('objectId', docId ? docId : templateId);
+          ownerQuery.notEqualTo('IsArchive', true);
+          const ownerRes = await ownerQuery.first({ useMasterKey: true });
+          if (!ownerRes) {
+            throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND, 'Document not found.');
+          }
+          if (!urlBelongsToObject(url, ownerRes.toJSON())) {
+            throw new Parse.Error(
+              Parse.Error.OPERATION_FORBIDDEN,
+              'File is not associated with this document.'
+            );
+          }
           return presignedlocalUrl(url);
         } else if (useLocal !== 'true') {
           const query = new Parse.Query(docId ? 'contracts_Document' : 'contracts_Template');
@@ -125,9 +155,17 @@ export async function getSignedUrl(request) {
   }
 }
 
+// File-URL JWTs were signed with MASTER_KEY, which made every issued URL a
+// derivative of the Parse master credential and meant rotating that key
+// invalidated all outstanding file links. Prefer a dedicated secret; fall back to
+// MASTER_KEY so existing deployments keep working until FILE_URL_SIGNING_KEY is set.
+function fileUrlSigningKey() {
+  return process.env.FILE_URL_SIGNING_KEY || process.env.MASTER_KEY;
+}
+
 // Function to generate a signed URL with JWT
 export function getSignedLocalUrl(fileUrl, expirationTimeInSeconds) {
-  const secretKey = process.env.MASTER_KEY;
+  const secretKey = fileUrlSigningKey();
   const exp = expirationTimeInSeconds || 200;
   try {
     // Create the payload with the file URL and expiration time
@@ -149,7 +187,7 @@ export function getSignedLocalUrl(fileUrl, expirationTimeInSeconds) {
 export function presignedlocalUrl(signedUrl, expirationTimeInSeconds) {
   if (signedUrl?.includes('/files/')) {
     const fileUrl = signedUrl.split('?')?.[0];
-    const secretKey = process.env.MASTER_KEY;
+    const secretKey = fileUrlSigningKey();
     const exp = expirationTimeInSeconds || 200;
     try {
       // Create the payload with the file URL and expiration time
@@ -177,7 +215,7 @@ export async function validateSignedLocalUrl(signedUrl) {
     if (!token) {
       throw new Error('No token provided.');
     }
-    const secretKey = process.env.MASTER_KEY;
+    const secretKey = fileUrlSigningKey();
     // Now verify the token (validate signature and expiration automatically)
     const decoded = jwt.verify(token, secretKey);
     // Check if the file URL in the JWT matches the requested file URL

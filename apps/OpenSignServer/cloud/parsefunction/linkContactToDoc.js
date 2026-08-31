@@ -58,6 +58,21 @@ export default async function linkContactToDoc(req) {
       const _docRes = JSON.parse(JSON.stringify(docRes));
       const Placeholders = _docRes?.Placeholders || [];
       const index = Placeholders?.findIndex(x => x.email && x.email === email);
+      // SECURITY: this function adds a contact to the document's Signers,
+      // Placeholders and ACL under the master key. It ran with no caller check,
+      // so an anonymous request could attach an arbitrary contact — and
+      // therefore grant read/write ACL — to any document.
+      //
+      // The legitimate guest caller is a signer claiming a placeholder that was
+      // already addressed to their email, so requiring a matching placeholder
+      // preserves that flow while refusing arbitrary attachment. An
+      // authenticated caller is still allowed through for owner-side flows.
+      if (index === -1 && !req?.user) {
+        throw new Parse.Error(
+          Parse.Error.OPERATION_FORBIDDEN,
+          'No placeholder for this email on this document.'
+        );
+      }
       if (index !== -1) {
         // `signerObjectId` holds the value of `signerObjId` from the `Placeholders` array at the current index.
         // This value is used to check if `signerObjId` is present or not.

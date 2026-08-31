@@ -6,6 +6,29 @@
 :3001 {
 	encode zstd gzip
 
+	# SECURITY: these Parse cloud functions do their own privileged work and have
+	# NO server-side caller check, but they DO have legitimate authenticated
+	# callers, so they cannot simply be 404'd at the tunnel the way addadmin and
+	# getUserId are. Refuse them only when no session is presented.
+	#
+	# Both header spellings must be matched: the frontend's raw axios calls send a
+	# literal lowercase `sessionToken` (constant/Utils.js, PdfRequestFiles.jsx,
+	# DocumentsReport.jsx, TemplatesReport.jsx) while Parse.Cloud.run sends
+	# `X-Parse-Session-Token` (Login.jsx usersignup). Matching only one would
+	# break the flow this is meant to preserve.
+	#
+	# Deliberately NOT listed: checkadminexist (Login.jsx uses it for setup
+	# routing), and every function reachable by an unauthenticated guest signer
+	# on /load/recipientSignPdf/* — getDocument, getcontact, getsignedurl,
+	# fileupload, linkcontacttodoc, declinedoc, triggerevent, signPdf. Those are
+	# authorized in the server code instead.
+	@unauth_privileged {
+		path /api/app/functions/usersignup /api/app/functions/sendmailv3 /api/app/functions/generatecertificate
+		not header sessionToken *
+		not header X-Parse-Session-Token *
+	}
+	respond @unauth_privileged 403
+
 	@api path /api/*
 	handle @api {
 		uri strip_prefix /api

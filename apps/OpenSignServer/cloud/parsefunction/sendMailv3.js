@@ -116,7 +116,89 @@ async function sendMailProvider(req) {
   }
 }
 
+
+/**
+ * Is `recipient` an address this mail is legitimately allowed to reach?
+ *
+ * SECURITY (MM-07). sendmailv3 took recipient, subject, html, cc and bcc from an
+ * unauthenticated caller and sent branded mail from the deployment's own domain
+ * and SMTP identity. That is an open relay: anyone could send convincing
+ * phishing "from" this tenant, to anyone.
+ *
+ * It cannot simply require a session. After a guest signs, the guest's own
+ * browser calls sendmailv3 to notify the NEXT signer, with no session at all
+ * (apps/OpenSign/src/pages/PdfRequestFiles.jsx). Blocking sessionless callers
+ * silently breaks sequential signing — the signature lands and the next signer is
+ * never told.
+ *
+ * What every legitimate call does have is an `extUserId` (the sending
+ * contracts_Users owner) and a `recipient` that already appears on that owner's
+ * documents. So scope delivery to addresses the owner is already corresponding
+ * with: their own address, anyone on their documents' Placeholders, and their
+ * contacts. An attacker can then only mail people the tenant already mails,
+ * which removes the arbitrary-recipient primitive without touching the client.
+ */
+async function recipientAllowedForOwner(recipient, extUserId) {
+  const email = String(recipient || '')
+    .toLowerCase()
+    .trim();
+  if (!email || !extUserId) return false;
+
+  const owner = await new Parse.Query('contracts_Users')
+    .equalTo('objectId', extUserId)
+    .first({ useMasterKey: true });
+  if (!owner) return false;
+
+  // 1. the owner themselves (completion notices, decline notices)
+  if (String(owner.get('Email') || '').toLowerCase() === email) return true;
+
+  // 2. anyone placed on one of the owner's own documents
+  const docs = await new Parse.Query('contracts_Document')
+    .equalTo('ExtUserPtr', {
+      __type: 'Pointer',
+      className: 'contracts_Users',
+      objectId: extUserId,
+    })
+    .select(['Placeholders'])
+    .limit(1000)
+    .find({ useMasterKey: true });
+  for (const doc of docs) {
+    const placeholders = doc.get('Placeholders') || [];
+    if (
+      Array.isArray(placeholders) &&
+      placeholders.some(ph => String(ph?.email || '').toLowerCase() === email)
+    ) {
+      return true;
+    }
+  }
+
+  // 3. the owner's own contacts
+  const contact = await new Parse.Query('contracts_Contactbook')
+    .equalTo('Email', email)
+    .notEqualTo('IsDeleted', true)
+    .first({ useMasterKey: true });
+  if (contact) return true;
+
+  return false;
+}
+
 async function sendmailv3(req) {
+  // An authenticated caller is the tenant acting on its own behalf and keeps the
+  // existing behaviour. Everything else must be a mail this owner could already
+  // legitimately send.
+  if (!req?.user) {
+    const allowed = await recipientAllowedForOwner(req.params?.recipient, req.params?.extUserId);
+    if (!allowed) {
+      console.log('sendmailv3 refused: recipient not associated with this sender');
+      return { status: 'error' };
+    }
+    // cc/bcc are attacker-controlled fan-out and no unauthenticated caller needs
+    // them: the guest next-signer notification sets neither.
+    if (req.params?.cc || req.params?.bcc) {
+      console.log('sendmailv3 refused: cc/bcc not permitted without a session');
+      return { status: 'error' };
+    }
+  }
   const nonCustomMail = await sendMailProvider(req);
   return nonCustomMail;
 }

@@ -25,8 +25,15 @@
 	# NOTE: this must be a `handle`, not a bare `respond`. Caddy evaluates
 	# `handle` blocks as a mutually-exclusive ordered group, and the `handle @api`
 	# below would otherwise proxy the request before a bare `respond` was reached.
+	# sendmailv3 is deliberately ABSENT from this list. It is called by the guest
+	# signer's own browser to notify the NEXT signer in a sequential document
+	# (PdfRequestFiles.jsx ~848, after signPdf succeeds). A guest has no session,
+	# so that call sends an empty sessionToken header and a block here silently
+	# breaks sequential signing: the signature lands, the next signer is never
+	# emailed, and nothing errors visibly. Confirmed in production 2026-08-31.
+	# sendmailv3 needs authorization in the cloud function, not a blanket block.
 	@unauth_privileged {
-		path /api/app/functions/usersignup /api/app/functions/sendmailv3 /api/app/functions/generatecertificate
+		path /api/app/functions/usersignup /api/app/functions/generatecertificate
 		not header sessionToken *
 		not header X-Parse-Session-Token *
 	}

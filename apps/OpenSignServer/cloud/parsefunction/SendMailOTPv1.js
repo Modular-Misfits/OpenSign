@@ -1,4 +1,30 @@
+import crypto from 'node:crypto';
 import { appName, smtpenable, updateMailCount } from '../../Utils.js';
+
+// SECURITY (MM-07). OTPs were generated with Math.random() -- not a CSPRNG, so
+// the sequence is predictable from observed values -- stored in plaintext, keyed
+// only by email, with no expiry, no attempt counter and no consumption on use.
+// A code therefore stayed valid forever and could be brute-forced offline-fast
+// against a live endpoint, and AuthLoginAsMail trades a matching code for a
+// master-key loginAs session.
+export const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+export const OTP_MAX_ATTEMPTS = 5;
+
+// 6 digits from a CSPRNG, rejection-sampled so every value is equally likely.
+export function generateOtpCode() {
+  const RANGE = 900000; // 100000..999999
+  const LIMIT = Math.floor(0xffffffff / RANGE) * RANGE;
+  let n;
+  do {
+    n = crypto.randomBytes(4).readUInt32BE(0);
+  } while (n >= LIMIT);
+  return String(100000 + (n % RANGE));
+}
+
+// Store only a salted hash: a database read must not yield a usable code.
+export function hashOtp(code, salt) {
+  return crypto.createHash('sha256').update(`${salt}:${code}`).digest('hex');
+}
 async function getDocument(docId) {
   try {
     const query = new Parse.Query('contracts_Document');
@@ -19,7 +45,10 @@ async function getDocument(docId) {
 }
 async function sendMailOTPv1(request) {
   try {
-    let code = Math.floor(1000 + Math.random() * 9000);
+    const code = generateOtpCode();
+    const salt = crypto.randomBytes(16).toString('hex');
+    const otpHash = hashOtp(code, salt);
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
     let email = request.params.email;
     let TenantId = request.params.TenantId ? request.params.TenantId : undefined;
     const AppName = appName;
@@ -38,7 +67,7 @@ async function sendMailOTPv1(request) {
             code +
             '</p></div></div></div></body></html>',
         });
-        console.log('OTP sent', code);
+        console.log('OTP sent to', recipient);
         if (request.params?.docId) {
           const extUserId = await getDocument(request.params?.docId);
           if (extUserId) {
@@ -52,22 +81,29 @@ async function sendMailOTPv1(request) {
       tempOtp.equalTo('Email', email);
       const resultOTP = await tempOtp.first({ useMasterKey: true });
       // console.log('resultOTP', resultOTP);
+      // Store the hash, never the code. Reset the attempt counter and set a
+      // fresh expiry on every issue, and clear any legacy plaintext OTP column.
       if (resultOTP !== undefined) {
         const updateOtpQuery = new Parse.Query('defaultdata_Otp');
         const updateOtp = await updateOtpQuery.get(resultOTP.id, {
           useMasterKey: true,
         });
-        updateOtp.set('OTP', code);
-        updateOtp.save(null, { useMasterKey: true });
-        //   console.log("update otp Res in tempSendOtp ", updateRes);
+        updateOtp.set('OtpHash', otpHash);
+        updateOtp.set('OtpSalt', salt);
+        updateOtp.set('ExpiresAt', expiresAt);
+        updateOtp.set('Attempts', 0);
+        updateOtp.unset('OTP');
+        await updateOtp.save(null, { useMasterKey: true });
       } else {
         const otpClass = Parse.Object.extend('defaultdata_Otp');
         const newOtpQuery = new otpClass();
-        newOtpQuery.set('OTP', code);
+        newOtpQuery.set('OtpHash', otpHash);
+        newOtpQuery.set('OtpSalt', salt);
+        newOtpQuery.set('ExpiresAt', expiresAt);
+        newOtpQuery.set('Attempts', 0);
         newOtpQuery.set('Email', email);
         newOtpQuery.set('TenantId', TenantId);
         await newOtpQuery.save(null, { useMasterKey: true });
-        //   console.log("new otp Res in tempSendOtp ", newRes);
       }
       return 'Otp send';
     } else {

@@ -63,12 +63,27 @@ async function AuthLoginAsMail(request) {
       }
 
       // Correct: consume the code immediately so it cannot be replayed.
+      //
+      // Only unset the legacy plaintext `OTP` column when this row actually has
+      // one. Parse adds columns lazily, so on a deployment that never wrote a
+      // plaintext OTP the column does not exist, and unsetting it makes the
+      // whole UPDATE fail with `column "OTP" ... does not exist` -- which would
+      // leave the code un-consumed and replayable. Caught in production testing.
       res.unset('OtpHash');
       res.unset('OtpSalt');
-      res.unset('OTP');
+      if (res.get('OTP') !== undefined) {
+        res.unset('OTP');
+      }
       res.set('Attempts', 0);
       res.set('ExpiresAt', new Date(0));
-      await res.save(null, { useMasterKey: true });
+      try {
+        await res.save(null, { useMasterKey: true });
+      } catch (consumeErr) {
+        // Consumption is security-critical: if it cannot be recorded, refuse the
+        // login rather than handing out a session against a still-valid code.
+        console.log('OTP consume failed, refusing login:', consumeErr?.message);
+        return 'Invalid Otp';
+      }
 
       {
         var result = await getToken(request);

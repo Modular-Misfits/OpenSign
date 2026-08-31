@@ -92,7 +92,12 @@ async function sendMailOTPv1(request) {
         updateOtp.set('OtpSalt', salt);
         updateOtp.set('ExpiresAt', expiresAt);
         updateOtp.set('Attempts', 0);
-        updateOtp.unset('OTP');
+        // Only unset the legacy plaintext column if this row has one: Parse adds
+        // columns lazily, so unsetting a column that was never created fails the
+        // whole save with `column "OTP" ... does not exist`.
+        if (updateOtp.get('OTP') !== undefined) {
+          updateOtp.unset('OTP');
+        }
         await updateOtp.save(null, { useMasterKey: true });
       } else {
         const otpClass = Parse.Object.extend('defaultdata_Otp');

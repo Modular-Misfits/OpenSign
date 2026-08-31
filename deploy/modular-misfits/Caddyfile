@@ -22,12 +22,17 @@
 	# on /load/recipientSignPdf/* — getDocument, getcontact, getsignedurl,
 	# fileupload, linkcontacttodoc, declinedoc, triggerevent, signPdf. Those are
 	# authorized in the server code instead.
+	# NOTE: this must be a `handle`, not a bare `respond`. Caddy evaluates
+	# `handle` blocks as a mutually-exclusive ordered group, and the `handle @api`
+	# below would otherwise proxy the request before a bare `respond` was reached.
 	@unauth_privileged {
 		path /api/app/functions/usersignup /api/app/functions/sendmailv3 /api/app/functions/generatecertificate
 		not header sessionToken *
 		not header X-Parse-Session-Token *
 	}
-	respond @unauth_privileged 403
+	handle @unauth_privileged {
+		respond "Forbidden" 403
+	}
 
 	@api path /api/*
 	handle @api {

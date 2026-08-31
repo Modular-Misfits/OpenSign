@@ -3,6 +3,7 @@ import Mailgun from 'mailgun.js';
 import { appName, smtpenable, smtpsecure, updateMailCount } from '../../Utils.js';
 import { createTransport } from 'nodemailer';
 import { deliverPortalSystemEmail } from '../portal/portalWebhook.js';
+import { capabilityRequired, mintCapability } from './docCapability.js';
 import { buildMailContent } from '../portal/mailContent.js';
 async function sendMailProvider(req) {
   const app = appName;
@@ -182,6 +183,36 @@ async function recipientAllowedForOwner(recipient, extUserId) {
   return false;
 }
 
+/**
+ * Add a capability token to any /login/<base64> signing links in the mail body.
+ *
+ * The guest who signs cannot mint a token — minting requires a session — yet
+ * their browser is what notifies the next signer. Rather than leave that link
+ * tokenless (and therefore broken once enforcement is on), the server mints it
+ * here, where the document and signer are already known and the master key is
+ * available. Links that already carry a token are left alone.
+ */
+function addCapabilityToLinks(html, docId) {
+  if (!html || !docId) return html;
+  // The lookahead must sit after the FULL base64 run, and `=` is both a base64
+  // pad character and part of `?t=`, so a naive negative lookahead still matches
+  // a shorter prefix and double-appends on a resend. Match the optional existing
+  // query explicitly and skip links that already carry a token.
+  return String(html).replace(/(\/login\/[A-Za-z0-9+/=_-]+)(\?t=[^"'\s>&]*)?/g, (match, link, existing) => {
+    if (existing) return match;
+    try {
+      // The base64 payload is `${docId}/${email}/${contactId}` — recover the
+      // contact so the token binds to this specific signer where possible.
+      const decoded = Buffer.from(link.split('/login/')[1], 'base64').toString('utf8');
+      const parts = decoded.split('/');
+      const contactId = parts.length >= 3 ? parts[2] : '';
+      return `${link}?t=${encodeURIComponent(mintCapability(docId, contactId))}`;
+    } catch {
+      return `${link}?t=${encodeURIComponent(mintCapability(docId, ''))}`;
+    }
+  });
+}
+
 async function sendmailv3(req) {
   // An authenticated caller is the tenant acting on its own behalf and keeps the
   // existing behaviour. Everything else must be a mail this owner could already
@@ -198,6 +229,11 @@ async function sendmailv3(req) {
       console.log('sendmailv3 refused: cc/bcc not permitted without a session');
       return { status: 'error' };
     }
+  }
+  // Mint capability tokens into signing links when enforcement is on, so mails
+  // sent on behalf of a sessionless guest still produce usable links.
+  if (capabilityRequired() && req.params?.docId && req.params?.html) {
+    req.params.html = addCapabilityToLinks(req.params.html, req.params.docId);
   }
   const nonCustomMail = await sendMailProvider(req);
   return nonCustomMail;

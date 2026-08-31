@@ -166,6 +166,11 @@ function PdfRequestFiles(
   });
   const isMobile = window.innerWidth < 767;
   let isGuestSignFlow = false;
+  // Capability token (MM-02): the invitation link may carry ?t=<token>, which
+  // proves this link was issued for this (document, signer) rather than merely
+  // guessed. Forwarded to getDocument/getcontact; harmless when absent, so old
+  // links keep working until enforcement is switched on server-side.
+  const capabilityToken = new URLSearchParams(window.location?.search || '').get('t') || '';
   let sendmail;
   let getDocId = "";
   let contactBookId = "";
@@ -564,7 +569,11 @@ function PdfRequestFiles(
             try {
               const resContact = await axios.post(
                 `${localStorage.getItem("baseUrl")}functions/getcontact`,
-                { contactId: currUserId },
+                {
+                  contactId: currUserId,
+                  docId: getDocumentId,
+                  capability: capabilityToken
+                },
                 {
                   headers: {
                     "Content-Type": "application/json",
@@ -863,6 +872,11 @@ function PdfRequestFiles(
                         } else {
                           encodeBase64 = btoa(`${docId}/${user.Email}`);
                         }
+                        // The guest notifying the next signer cannot mint a
+                        // token (minting requires a session), so this link
+                        // carries none. It keeps working while enforcement is
+                        // off; once enabled, sequential invitations must be
+                        // minted server-side. Tracked in the runbook.
                         let signPdf =
                               `${hostUrl}/login/${encodeBase64}`;
                         const orgName = pdfDetails[0]?.ExtUserPtr.Company
@@ -913,6 +927,9 @@ function PdfRequestFiles(
                         let params = {
                           replyto: senderEmail || "",
                           extUserId: extUserId,
+                          // docId lets the server mint a capability token into
+                          // the signing link, which this guest cannot do.
+                          docId: pdfDetails?.[0]?.objectId,
                           recipient: user.Email,
                           subject: replaceVar?.subject
                             ? replaceVar?.subject

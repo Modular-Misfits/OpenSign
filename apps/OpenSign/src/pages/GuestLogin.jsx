@@ -47,16 +47,26 @@ function GuestLogin() {
 
   const navigateToDoc = async (docId, contactId) => {
     try {
+      // Capability token (MM-02): forward it to getDocument, and preserve it
+      // across the redirect below — otherwise the signing page loses it and
+      // cannot prove the link was issued rather than guessed.
+      const capabilityToken =
+        new URLSearchParams(window.location?.search || "").get("t") || "";
       const docDetails = await Parse.Cloud.run("getDocument", {
-        docId: docId
+        docId: docId,
+        contactId: contactId,
+        capability: capabilityToken
       });
       if (!docDetails.error) {
+        const carry = capabilityToken
+          ? `${sendmail === "false" ? "&" : "?"}t=${encodeURIComponent(capabilityToken)}`
+          : "";
         if (sendmail === "false") {
           navigate(
-            `/load/recipientSignPdf/${docId}/${contactId}?sendmail=${sendmail}`
+            `/load/recipientSignPdf/${docId}/${contactId}?sendmail=${sendmail}${carry}`
           );
         } else {
-          navigate(`/load/recipientSignPdf/${docId}/${contactId}`);
+          navigate(`/load/recipientSignPdf/${docId}/${contactId}${carry}`);
         }
         return true;
       } else {
@@ -201,12 +211,19 @@ function GuestLogin() {
             );
           }
           setLoading(false);
+          // Preserve the capability token across this redirect too (the
+          // OTP-verified path), or the signing page loses it.
+          const otpCarryToken =
+            new URLSearchParams(window.location?.search || "").get("t") || "";
+          const otpCarry = otpCarryToken
+            ? `${sendmail === "false" ? "&" : "?"}t=${encodeURIComponent(otpCarryToken)}`
+            : "";
           if (sendmail === "false") {
             navigate(
-              `/load/recipientSignPdf/${documentId}/${contactId}?sendmail=${sendmail}`
+              `/load/recipientSignPdf/${documentId}/${contactId}?sendmail=${sendmail}${otpCarry}`
             );
           } else {
-            navigate(`/load/recipientSignPdf/${documentId}/${contactId}`);
+            navigate(`/load/recipientSignPdf/${documentId}/${contactId}${otpCarry}`);
           }
         }
       } catch (error) {

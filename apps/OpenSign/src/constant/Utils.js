@@ -4631,7 +4631,22 @@ export const sendEmailToSigners = async (
       const encodeBase64 = btoa(
         `${pdfDetails[0]?.objectId}/${signerMail[i].Email}/${objectId}`
       );
+      // Capability token (MM-02): bind this invitation link to (doc, signer) so
+      // that possessing the objectId is not by itself enough to open it. Best
+      // effort — if minting fails the link still works, and the server only
+      // enforces once DOC_CAPABILITY_REQUIRED is on.
       let signPdf = `${hostUrl}/login/${encodeBase64}`;
+      try {
+        const cap = await Parse.Cloud.run("issuecapability", {
+          docId: pdfDetails[0]?.objectId,
+          contactId: signerMail[i]?.objectId || ""
+        });
+        if (cap?.capability) {
+          signPdf = `${signPdf}?t=${encodeURIComponent(cap.capability)}`;
+        }
+      } catch (e) {
+        console.log("capability mint skipped", e?.message);
+      }
       const orgName = pdfDetails[0]?.ExtUserPtr.Company
         ? pdfDetails[0].ExtUserPtr.Company
         : "";

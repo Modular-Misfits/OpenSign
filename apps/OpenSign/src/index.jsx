@@ -7,7 +7,7 @@ import { Provider } from "react-redux";
 import { store } from "./redux/store";
 import Parse from "parse";
 import "./polyfills";
-import { serverUrl_fn } from "./constant/appinfo";
+import { appInfo, serverUrl_fn } from "./constant/appinfo";
 import "./i18n";
 import { ScrollProvider } from "./context/ScrollPdfContext";
 
@@ -17,12 +17,18 @@ const serverUrl = serverUrl_fn();
 Parse.initialize(appId);
 Parse.serverURL = serverUrl;
 
+// Refresh cached brand assets on every release so returning users do not keep
+// the previous OpenSign logo from localStorage.
+localStorage.setItem("appLogo", appInfo.applogo);
+localStorage.setItem("favicon", appInfo.fev_Icon);
+localStorage.setItem("appname", appInfo.appName);
+
 if (localStorage.getItem("showUpgradeProgress")) {
   showUpgradeProgress();
 }
 
 const savedTheme = localStorage.getItem("theme");
-if (savedTheme === "dark") {
+if (savedTheme !== "light") {
   document.documentElement.setAttribute("data-theme", "opensigndark");
 }
 

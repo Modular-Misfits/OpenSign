@@ -3,7 +3,7 @@ import Parse from "parse";
 import { useDispatch } from "react-redux";
 import axios from "axios";
 import { NavLink, useNavigate, useLocation } from "react-router";
-import login_img from "../assets/images/login_img.svg";
+import brandWatermark from "../assets/images/modular-misfits-watermark.png";
 import { useWindowSize } from "../hook/useWindowSize";
 import ModalUi from "../primitives/ModalUi";
 import {
@@ -21,10 +21,11 @@ import {
 import Loader from "../primitives/Loader";
 import { useTranslation } from "react-i18next";
 import SelectLanguage from "../components/pdf/SelectLanguage";
+import BrandLogo from "../components/BrandLogo";
 
 function Login() {
   const appName =
-    "OpenSign™";
+    "Modular Misfits Agreements";
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -426,18 +427,10 @@ function Login() {
           <div
             aria-labelledby="loginHeading"
             role="region"
-            className="pb-1 md:pb-4 pt-10 md:px-10 lg:px-16 h-full"
+            className="mm-auth-shell pb-1 md:pb-4 pt-10 md:px-10 lg:px-16 h-full"
           >
-            <div className="md:p-4 lg:p-10 p-4 bg-base-100 text-base-content op-card">
-              <div className="w-[250px] h-[66px] inline-block overflow-hidden">
-                {image && (
-                  <img
-                    src={image}
-                    className="object-contain h-full"
-                    alt="applogo"
-                  />
-                )}
-              </div>
+            <div className="mm-auth-card md:p-4 lg:p-10 p-4 bg-base-100 text-base-content op-card">
+              <BrandLogo logo={image} className="mb-6" />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-2">
                 <div>
                   <form onSubmit={handleLoginBtn} aria-label="Login Form">
@@ -521,11 +514,12 @@ function Login() {
                 </div>
                 {width >= 768 && (
                   <div className="place-self-center">
-                    <div className="mx-auto md:w-[300px] lg:w-[400px] xl:w-[500px]">
+                    <div className="mx-auto md:w-[180px] lg:w-[240px] xl:w-[300px]">
                       <img
-                        src={login_img}
-                        alt="The image illustrates a person from behind, seated at a desk with a four-monitor computer setup, in an environment with a light blue and white color scheme, featuring a potted plant to the right."
+                        src={brandWatermark}
+                        alt="Modular Misfits"
                         width="100%"
+                        className="mm-login-watermark"
                       />
                     </div>
                   </div>

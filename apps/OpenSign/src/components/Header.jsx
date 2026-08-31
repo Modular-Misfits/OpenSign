@@ -15,6 +15,7 @@ import { appInfo } from "../constant/appinfo";
 import { useDispatch } from "react-redux";
 import { toggleSidebar } from "../redux/reducers/sidebarReducer";
 import { sessionStatus } from "../redux/reducers/userReducer";
+import BrandLogo from "./BrandLogo";
 
 const Header = ({ isConsole, setIsLoggingOut }) => {
   const { t, i18n } = useTranslation();
@@ -25,7 +26,6 @@ const Header = ({ isConsole, setIsLoggingOut }) => {
   const image = localStorage.getItem("profileImg") || dp;
   const [isOpen, setIsOpen] = useState(false);
   const [applogo, setAppLogo] = useState("");
-  const [isDarkTheme, setIsDarkTheme] = useState();
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
@@ -108,26 +108,6 @@ const Header = ({ isConsole, setIsLoggingOut }) => {
   }, [isOpen]);
 
 
-  useEffect(() => {
-    const updateThemeStatus = () => {
-      const isDarkTheme =
-        document.documentElement.getAttribute("data-theme") === "opensigndark";
-      setIsDarkTheme(isDarkTheme);
-    };
-    updateThemeStatus();
-
-    const observer = new MutationObserver(() => {
-      updateThemeStatus();
-    });
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme"]
-    });
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <>
       <div className="op-navbar bg-base-100 shadow touch-none">
@@ -144,17 +124,7 @@ const Header = ({ isConsole, setIsLoggingOut }) => {
             onClick={() => navigate("/dashboard/35KBoSgoAK")}
             className="h-[25px] md:h-[40px] w-auto overflow-hidden cursor-pointer"
           >
-            {applogo && (
-              <img
-                className="object-contain h-full w-auto"
-                src={
-                      isDarkTheme
-                      ? "/static/js/assets/images/logo-dark.png"
-                      : applogo
-                }
-                alt="logo"
-              />
-            )}
+            {applogo && <BrandLogo compact logo={applogo} />}
           </div>
         </div>
         <div id="profile-menu" className="flex-none gap-2">

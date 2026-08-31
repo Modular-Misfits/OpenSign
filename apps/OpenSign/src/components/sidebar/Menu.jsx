@@ -4,8 +4,8 @@ import { NavLink } from "react-router";
 
 const Menu = ({ item, isOpen, closeSidebar }) => {
   const appName =
-    "OpenSign™";
-  const drivename = appName === "OpenSign™" ? "OpenSign™" : "";
+    "Modular Misfits Agreements";
+  const drivename = appName === "Modular Misfits Agreements" ? "Modular Misfits Agreements" : "";
   const { t } = useTranslation();
   const { selectedMenu } = useSelector((state) => state.sidebar);
 

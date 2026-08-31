@@ -19,7 +19,7 @@ import SessionExpiredModal from "../primitives/SessionExpiredModal";
 
 const HomeLayout = () => {
   const appName =
-    "OpenSign™";
+    "Modular Misfits Agreements";
   const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const tourArr = useSelector((state) => state.TourSteps);

@@ -8,13 +8,14 @@ import {
   contractUsers,
   saveLanguageInLocal
 } from "../constant/Utils";
-import logo from "../assets/images/logo.png";
+import logo from "../assets/images/modular-misfits-logo.png";
 import { appInfo } from "../constant/appinfo";
 import Parse from "parse";
 import { useTranslation } from "react-i18next";
 import SelectLanguage from "../components/pdf/SelectLanguage";
 import LoaderWithMsg from "../primitives/LoaderWithMsg";
 import ModalUi from "../primitives/ModalUi";
+import BrandLogo from "../components/BrandLogo";
 import Loader from "../primitives/Loader";
 
 function GuestLogin() {
@@ -83,7 +84,7 @@ function GuestLogin() {
     localStorage.setItem("favicon", favicon);
     localStorage.setItem(
       "appname",
-        "OpenSign™"
+        "Modular Misfits Agreements"
     );
     //save isGuestSigner true in local to handle login flow header in mobile view
     localStorage.setItem("isGuestSigner", true);
@@ -309,17 +310,9 @@ function GuestLogin() {
       {isLoading.isLoad ? (
         <LoaderWithMsg isLoading={isLoading} />
       ) : (
-        <div className="pb-1 md:pb-4 pt-10 md:px-10 lg:px-16">
-          <div className="md:p-4 lg:p-10 p-4 text-base-content bg-base-100 op-card shadow-md">
-            <div className="w-[250px] h-[66px] inline-block overflow-hidden mb-6">
-              {appLogo && (
-                <img
-                  src={appLogo}
-                  className="object-contain h-full"
-                  alt="logo"
-                />
-              )}
-            </div>
+        <div className="mm-auth-shell pb-1 md:pb-4 pt-10 md:px-10 lg:px-16">
+          <div className="mm-auth-card md:p-4 lg:p-10 p-4 text-base-content bg-base-100 op-card shadow-md">
+            <BrandLogo logo={appLogo || logo} className="mb-6" />
             {contactId ? (
               <div className="w-full md:w-[50%] text-base-content">
                 <h1 className="text-2xl md:text-[30px]">{t("welcome")}</h1>

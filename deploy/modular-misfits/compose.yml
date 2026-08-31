@@ -64,8 +64,21 @@ services:
     volumes:
       - opensign-files:/app/files
       - opensign-exports:/app/exports
-      - ${PORTAL_NDA_TEMPLATE_DIR:?PORTAL_NDA_TEMPLATE_DIR is required}:/run/portal-nda-templates:ro
-      - ${PORTAL_NDA_CONFIG_DIR:?PORTAL_NDA_CONFIG_DIR is required}:/run/portal-nda-config:ro
+      # Use long bind syntax so a typo or stale workstation path fails closed.
+      # Docker Compose's short syntax silently creates a missing host directory,
+      # which leaves the bridge healthy-looking but unable to create an NDA.
+      - type: bind
+        source: ${PORTAL_NDA_TEMPLATE_DIR:?PORTAL_NDA_TEMPLATE_DIR is required}
+        target: /run/portal-nda-templates
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${PORTAL_NDA_CONFIG_DIR:?PORTAL_NDA_CONFIG_DIR is required}
+        target: /run/portal-nda-config
+        read_only: true
+        bind:
+          create_host_path: false
     tmpfs:
       - /tmp:size=256m,mode=1777
     healthcheck:

@@ -62,15 +62,25 @@ export default async function getPresignedUrl(url) {
   }
 }
 
-// Does `url` actually appear on this document/template? Checked against the
-// fields that legitimately carry file URLs, plus the audit trail, rather than
-// trusting the caller.
+// Compare file URLs ignoring any `?token=` query string: SignedUrl is stored
+// WITH a previously-minted JWT attached, so an exact match against the URL a
+// caller is asking us to re-sign would fail for a legitimate signer.
+function sameFile(a, b) {
+  if (!a || !b) return false;
+  const strip = u => String(u).split('?')[0];
+  return strip(a) === strip(b);
+}
+
+// Does `url` actually appear on this document/template? Verified against the
+// real columns that carry file URLs on contracts_Document
+// (URL, SignedUrl, CertificateUrl) and contracts_Template (URL), plus the audit
+// trail, rather than trusting the caller.
 function urlBelongsToObject(url, obj) {
   if (!url || !obj) return false;
-  const direct = [obj.URL, obj.SignedUrl, obj.OriginalUrl];
-  if (direct.some(u => u && u === url)) return true;
+  const direct = [obj.URL, obj.SignedUrl, obj.CertificateUrl];
+  if (direct.some(u => sameFile(u, url))) return true;
   const trail = Array.isArray(obj.AuditTrail) ? obj.AuditTrail : [];
-  if (trail.some(e => e?.SignedUrl === url)) return true;
+  if (trail.some(e => sameFile(e?.SignedUrl, url))) return true;
   return false;
 }
 

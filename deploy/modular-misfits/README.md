@@ -72,3 +72,39 @@ enters only through Cloudflare Tunnel; PostgreSQL is never published.
 For a workstation-hosted production deployment, run `watchdog.sh` from a user
 LaunchAgent at login and once per minute. The watchdog starts Docker Desktop when
 needed, reconciles the Compose stack, and waits for the private health endpoint.
+
+### Earlier effective dates for new NDAs
+
+In The Compound's **Send NDAs** form, Tony can optionally choose today's date
+(America/Chicago) or an earlier calendar date. This fills the existing “made
+as of” blank in a new MM, CyCrypt, or XPress mutual NDA. Both parties see the
+date before signing. Omitting it retains the previous workflow. This feature
+does not change the signing, sending, expiration, completion, or certificate
+timestamps and cannot be applied to an existing document.
+
+The Portal verifies the requester's Access identity (not the internal signer
+email), persists the override in its request ledger, and uses a versioned private
+bridge route (the current Worker uses `POST /portal/v1/nda/record-copies`). A bridge without that
+route cannot silently send a document with today's date. The bridge stamps
+only a new unsigned copy, stores `PortalEffectiveDate`, and rejects conflicting
+idempotent replays before any notification. No master keys or templates belong
+in the Portal client or a shared repository.
+
+**Release order:** qualify/deploy the bridge and additive Parse migration;
+apply Portal D1 migration `0006_nda_effective_date.sql` before deploying the
+matching Portal Worker/UI. Apply the additive record-copy migration 0007 as well.
+The unsigned template is now reflowed before signature fields are placed; see
+[layout and completion copies](nda-layout/README.md). Do not deploy an unrelated Portal branch wholesale.
+For rollback stop offering overrides first and preserve dated queue rows and
+both optional date columns; keep the compatible bridge available until pending
+dated requests are reconciled. Do not backfill or rewrite completed agreements.
+
+**Local qualification:** use a disposable loopback PostgreSQL database named
+`opensign_nda_date_test`. From `apps/OpenSignServer`, set
+`NDA_TEST_DATABASE_URI` and run `node --test spec/ndaEffectiveDate.postgres.node.test.js`.
+For qualification with the real private templates, also set
+`NDA_TEST_TEMPLATE_DIR` and `NDA_TEST_LAYOUT` to their local paths. The test
+uses an isolated file store and loopback email sink. In the Portal checkout,
+run `bun test src/lib/nda-effective-date.integration.test.js`,
+`pnpm run typecheck:nda`, and `node scripts/nda-effective-date-ui.mjs` (provide
+`CHROMIUM_PATH` if required). No production send is needed to qualify.

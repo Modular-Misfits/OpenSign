@@ -4,9 +4,13 @@ ENV NODE_ENV=production \
     PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH
 
+COPY requirements-nda-layout.txt /tmp/requirements-nda-layout.txt
 RUN corepack enable \
     && apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates openssl fonts-liberation \
+    && apt-get install -y --no-install-recommends ca-certificates openssl fonts-liberation python3-venv libstdc++6 \
+    && python3 -m venv /opt/nda-layout
+    && /opt/nda-layout/bin/pip install --no-cache-dir --no-deps --only-binary=:all: --require-hashes -r /tmp/requirements-nda-layout.txt
+    && /opt/nda-layout/bin/python -I -c "import pymupdf"
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

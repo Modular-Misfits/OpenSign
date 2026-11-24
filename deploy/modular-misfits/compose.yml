@@ -62,6 +62,12 @@ services:
       PORTAL_TEMPLATE_DIR: /run/portal-nda-templates
       PORTAL_TEMPLATE_CONFIG: /run/portal-nda-config/layout.json
     volumes:
+      - type: bind
+        source: ./nda-layout/nda_layout.py
+        target: /opt/nda-layout/nda_layout.py
+        read_only: true
+        bind:
+          create_host_path: false
       - opensign-files:/app/files
       - opensign-exports:/app/exports
       # Use long bind syntax so a typo or stale workstation path fails closed.

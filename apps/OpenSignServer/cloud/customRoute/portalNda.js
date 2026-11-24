@@ -1,7 +1,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs/promises';
-import path from 'node:path';
-import { PDFDocument } from 'pdf-lib';
+import { renderPortalNda } from '../portal/ndaLayout.js';
+import { validEffectiveDate } from '../portal/ndaEffectiveDate.js';
 
 import sendSystemMail from '../parsefunction/sendSystemMail.js';
 import { presignedlocalUrl } from '../parsefunction/getSignedUrl.js';
@@ -58,7 +58,7 @@ function requiredEmail(value, field) {
   return email;
 }
 
-function validatePayload(body) {
+function validatePayload(body, explicitDate = false) {
   const requestId = requiredString(body?.requestId, 'requestId', 80);
   const ndaCompany = requiredString(body?.ndaCompany, 'ndaCompany', 20);
   if (!REQUEST_ID_RE.test(requestId) || !COMPANY_KEYS.has(ndaCompany)) {
@@ -74,6 +74,17 @@ function validatePayload(body) {
     internalPoc: requiredString(body.internalPoc, 'internalPoc', 200),
     internalPocEmail: requiredEmail(body.internalPocEmail, 'internalPocEmail'),
   };
+  if (explicitDate) {
+    if (Object.keys(body).some(key => key !== 'effectiveDate' && !Object.hasOwn(input, key))) {
+      throw new PortalRequestError(400, 'PORTAL_INVALID_REQUEST', 'Unexpected dated NDA request field');
+    }
+    if (!validEffectiveDate(body.effectiveDate)) {
+      throw new PortalRequestError(400, 'PORTAL_INVALID_EFFECTIVE_DATE', 'Choose today or an earlier calendar date');
+    }
+    input.effectiveDate = body.effectiveDate;
+  } else if (body.effectiveDate !== undefined) {
+    throw new PortalRequestError(400, 'PORTAL_INVALID_REQUEST', 'Use the effective-date creation endpoint');
+  }
   if (input.companyPocEmail === input.internalPocEmail) {
     throw new PortalRequestError(
       400,
@@ -207,66 +218,6 @@ async function getOrCreateContact({ owner, email, name, company }) {
   return contact.save(null, { useMasterKey: true });
 }
 
-function formatEffectiveDate() {
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(new Date());
-}
-
-function fieldValue(field, input, companyConfig) {
-  switch (field.value) {
-    case 'effectiveDate':
-      return formatEffectiveDate();
-    case 'companyName':
-      return input.companyName;
-    case 'companyAddress':
-      return input.companyAddress;
-    case 'internalCompanyName':
-      return companyConfig.internalCompanyName;
-    default:
-      throw new Error(`Unknown prefill field value ${field.value}`);
-  }
-}
-
-async function preparePdf(companyConfig) {
-  const templateRoot = process.env.PORTAL_TEMPLATE_DIR;
-  if (!templateRoot) throw new Error('PORTAL_TEMPLATE_DIR is required');
-  const pdfPath = path.resolve(templateRoot, companyConfig.pdf);
-  const expectedRoot = `${path.resolve(templateRoot)}${path.sep}`;
-  if (!pdfPath.startsWith(expectedRoot)) throw new Error('Template path escapes template directory');
-  const bytes = await fs.readFile(pdfPath);
-  if (bytes.length > MAX_PDF_BYTES) throw new Error('NDA template exceeds maximum size');
-
-  const pdf = await PDFDocument.load(bytes);
-  const fields = [
-    ...companyConfig.prefill,
-    ...companyConfig.signers.counterparty,
-    ...companyConfig.signers.internal,
-  ];
-  for (const field of fields) {
-    const page = pdf.getPage(field.page - 1);
-    if (!page) throw new Error(`Template page ${field.page} does not exist`);
-    const { width, height } = page.getSize();
-    if (Math.abs(width - 612) > 0.5 || Math.abs(height - 792) > 0.5) {
-      throw new Error(`Template page ${field.page} is not US Letter size`);
-    }
-    if (
-      field.x < 0 ||
-      field.y < 0 ||
-      field.width <= 0 ||
-      field.height <= 0 ||
-      field.x + field.width > 100 ||
-      field.y + field.height > 100
-    ) {
-      throw new Error(`Template field on page ${field.page} is outside the page`);
-    }
-  }
-  return bytes;
-}
-
 function widgetOptions(field, signer, index) {
   const base = {
     name: `${field.type}-${signer.id}-${index + 1}`,
@@ -305,11 +256,11 @@ function widgetOptions(field, signer, index) {
 function buildPlaceholder({ role, signer, fields, color }) {
   const pages = new Map();
   fields.forEach((field, index) => {
-    const width = (field.width / 100) * 612;
-    const height = (field.height / 100) * 792;
+    const width = field.width;
+    const height = field.height;
     const entry = {
-      xPosition: (field.x / 100) * 612,
-      yPosition: (field.y / 100) * 792,
+      xPosition: field.x,
+      yPosition: field.y,
       key: `${signer.id}-${index + 1}`,
       scale: 1,
       zIndex: index + 1,
@@ -411,6 +362,19 @@ This signing link is unique to you. Do not forward it.`;
   await document.save(null, { useMasterKey: true });
 }
 
+// Separate request completion from proof of both distinct signatures. Never
+// publish signer identities or file links on public endpoints.
+export function executionProof(document) {
+  const ids = new Set((document.get('AuditTrail') || []).filter(a => a.Activity === 'Signed' &&
+    a.UserPtr?.className === 'contracts_Contactbook').map(a => referenceId(a.UserPtr)));
+  const signers = document.get('Signers') || [];
+  const hash = document.get('DocumentHash');
+  if (!document.get('IsCompleted') || document.get('IsDeclined') || signers.length !== 2 ||
+      new Set(signers.map(s => s.id)).size !== 2 || !signers.every(s => ids.has(s.id)) ||
+      !/^[a-f0-9]{64}$/.test(hash || '')) return undefined;
+  return { sha256: hash, signers: signers.map(s => s.get('Email')) };
+}
+
 function serializeDocument(document) {
   return {
     id: document.id,
@@ -423,6 +387,7 @@ function serializeDocument(document) {
         : 'PENDING',
     completedAt: document.get('IsCompleted') ? document.updatedAt?.toISOString() : null,
     certificateAvailable: Boolean(document.get('CertificateUrl')),
+    execution: executionProof(document),
   };
 }
 
@@ -436,12 +401,18 @@ async function queryPortalDocument(documentId) {
   return document;
 }
 
-async function createDocument(input) {
+async function createDocument(input, recordCopies = false) {
   const duplicateQuery = new Parse.Query('contracts_Document');
   duplicateQuery.equalTo('PortalRequestId', input.requestId);
   duplicateQuery.include('ExtUserPtr,Signers');
   const duplicate = await duplicateQuery.first({ useMasterKey: true });
   if (duplicate) {
+    if ((duplicate.get('IsSendMail') === false) !== recordCopies) {
+      throw new PortalRequestError(409, 'PORTAL_DELIVERY_CONFLICT', 'Existing request uses a different delivery policy');
+    }
+    if ((duplicate.get('PortalEffectiveDate') || null) !== (input.effectiveDate || null)) {
+      throw new PortalRequestError(409, 'PORTAL_EFFECTIVE_DATE_CONFLICT', 'This request already has a different effective date');
+    }
     const firstSigner = duplicate.get('Signers')?.[0];
     if (firstSigner) {
       await sendInitialSignerEmail(duplicate, {
@@ -458,6 +429,7 @@ async function createDocument(input) {
   if (!companyConfig) {
     throw new PortalRequestError(500, 'OPENSIGN_TEMPLATE_MISSING', 'NDA template is missing');
   }
+  const { bytes: pdfBytes, fields } = await renderPortalNda(companyConfig, input);
   const owner = await getOwner();
   const counterparty = await getOrCreateContact({
     owner,
@@ -471,7 +443,6 @@ async function createDocument(input) {
     name: input.internalPoc,
     company: companyConfig.internalCompanyName,
   });
-  const pdfBytes = await preparePdf(companyConfig);
   const filename = `${input.ndaCompany}-mutual-nda-${input.requestId}.pdf`;
   const file = new Parse.File(filename, { base64: pdfBytes.toString('base64') }, 'application/pdf');
   await file.save({ useMasterKey: true });
@@ -481,24 +452,17 @@ async function createDocument(input) {
     { id: counterparty.id, email: input.companyPocEmail, name: input.companyPoc },
     { id: internal.id, email: input.internalPocEmail, name: input.internalPoc },
   ];
-  const prefillFields = companyConfig.prefill.map(field => ({
-    ...field,
-    type: 'text',
-    required: false,
-    isReadOnly: true,
-    defaultValue: fieldValue(field, input, companyConfig),
-  }));
   const placeholders = [
     buildPlaceholder({
       role: 'Counterparty signer',
       signer: signerData[0],
-      fields: [...prefillFields, ...companyConfig.signers.counterparty],
+      fields: fields[0],
       color: '#45BFC2',
     }),
     buildPlaceholder({
       role: `${companyConfig.shortName} signer`,
       signer: signerData[1],
-      fields: companyConfig.signers.internal,
+      fields: fields[1],
       color: '#A855F7',
     }),
   ];
@@ -520,12 +484,13 @@ async function createDocument(input) {
   document.set('AutomaticReminders', false);
   document.set('IsEnableOTP', false);
   document.set('SendMail', true);
-  document.set('IsSendMail', true);
+  document.set('IsSendMail', !recordCopies); // Only generic completion mail. Initial/next signer invitations stay enabled.
   document.set('DocSentAt', new Date());
   document.set('SenderName', process.env.PORTAL_OWNER_NAME || 'Modular Misfits Agreements');
   document.set('SenderMail', process.env.PORTAL_OWNER_EMAIL);
   document.set('PortalRequestId', input.requestId);
   document.set('PortalNdaCompany', input.ndaCompany);
+  if (input.effectiveDate) document.set('PortalEffectiveDate', input.effectiveDate);
   const acl = new Parse.ACL();
   acl.setReadAccess(owner.user.id, true);
   acl.setWriteAccess(owner.user.id, true);
@@ -570,14 +535,18 @@ async function fetchStoredPdf(url) {
 }
 
 export function mountPortalNdaRoutes(app) {
-  app.post('/portal/v1/nda', authorize, async (req, res, next) => {
+  const create = (explicitDate, copies = false) => async (req, res, next) => {
     try {
-      const document = await createDocument(validatePayload(req.body));
+      const document = await createDocument(validatePayload(req.body, explicitDate || (copies && req.body?.effectiveDate !== undefined)), copies);
       res.status(201).json(serializeDocument(document));
     } catch (error) {
       next(error);
     }
-  });
+  };
+  app.post('/portal/v1/nda', authorize, create(false));
+  // An older bridge must reject a dated request, never send it with today's date.
+  app.post('/portal/v1/nda/with-effective-date', authorize, create(true));
+  app.post('/portal/v1/nda/record-copies', authorize, create(false, true));
 
   app.get('/portal/v1/nda/:documentId', authorize, async (req, res, next) => {
     try {

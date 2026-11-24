@@ -2,6 +2,12 @@ import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_NOTE_LENGTH } from '../../
 import { setDocumentCount } from '../../utils/CountUtils.js';
 
 async function DocumentBeforesave(request) {
+  if (
+    request.object.get('PortalEffectiveDate') !== request.original?.get('PortalEffectiveDate') &&
+    (request.original || !request.master)
+  ) {
+    throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, 'The NDA effective date is set only before creation.');
+  }
   if (!request.original) {
     const validations = [
       { field: 'Name', max: MAX_NAME_LENGTH },

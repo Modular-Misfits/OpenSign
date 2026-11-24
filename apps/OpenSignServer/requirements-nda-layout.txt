@@ -1,0 +1,4 @@
+# PyMuPDF, CPython 3.11+ stable ABI, Linux arm64 and x86_64 wheels only.
+PyMuPDF==2.1 \
+  --hash=sha256:5a1a1fee36d5598013614e06eef25aaa68819d828f5401170dbcaf6f2714d1dd \
+  --hash=sha256:a9efa2e9e5f469d3b5749199329739cfef1ff1d1846538ced4885c544eecbcd9

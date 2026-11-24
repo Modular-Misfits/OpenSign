@@ -335,7 +335,7 @@ async function sendMailsaveCertifcate(doc, pfx, isCustomMail, mailProvider, file
   await axios.put(`${docUrl}/${doc.objectId}`, body, { headers });
   // used in API only
   if (doc.IsSendMail === false) {
-    console.log("don't send mail");
+    await unlinkFile(certificatePath); // Already uploaded; no SMTP consumer for this file.
   } else {
     // Completion mail is secondary to the already-persisted signature. Keep
     // any delivery/attachment failure from becoming an unhandled rejection

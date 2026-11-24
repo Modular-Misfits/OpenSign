@@ -9,6 +9,7 @@ import {
 } from "../constant/Utils";
 import { useNavigate } from "react-router";
 import Parse from "parse";
+import { CompanyDocumentsLink } from "./CompanyDocuments";
 import ModalUi from "../primitives/ModalUi";
 import TourContentWithBtn from "../primitives/TourContentWithBtn";
 import Tour from "../primitives/Tour";
@@ -680,6 +681,7 @@ function Opensigndrive() {
               {handleFolderTab(folderName)}
             </div>
             <div className="flex flex-row items-center justify-center md:gap-1">
+              <CompanyDocumentsLink />
               {/* Desktop search input */}
               <div className="hidden md:block p-2">
                 <input

@@ -69,6 +69,8 @@ docker compose --env-file .env -f compose.yml up --no-build -d
 The Linux host must keep port `3100` bound to loopback. Public HTTP traffic
 enters only through Cloudflare Tunnel; PostgreSQL is never published.
 
+For employee read-only access across document owners, see [Company documents](COMPANY-DOCUMENTS.md).
+
 For a workstation-hosted production deployment, run `watchdog.sh` from a user
 LaunchAgent at login and once per minute. The watchdog starts Docker Desktop when
 needed, reconciles the Compose stack, and waits for the private health endpoint.

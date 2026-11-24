@@ -39,6 +39,8 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://sign.modularmisfits.io}
       MASTER_KEY_IPS: 127.0.0.1/32,::1/128
       USE_LOCAL: "true"
+      COMPANY_DOCUMENT_READER_ID: ${COMPANY_DOCUMENT_READER_ID:-}
+      COMPANY_DOCUMENT_ORG_ID: ${COMPANY_DOCUMENT_ORG_ID:-}
       APP_NAME: ${APP_NAME:-Modular Misfits Agreements}
       SMTP_ENABLE: "true"
       SMTP_HOST: ${SMTP_HOST:?SMTP_HOST is required}

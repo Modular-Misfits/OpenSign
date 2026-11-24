@@ -26,6 +26,7 @@ const ForgetPassword = lazyWithRetry(() => import("./pages/ForgetPassword"));
 const GuestLogin = lazyWithRetry(() => import("./pages/GuestLogin"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const UserProfile = lazyWithRetry(() => import("./pages/UserProfile"));
+const CompanyDocuments = lazyWithRetry(() => import("./pages/CompanyDocuments"));
 const Opensigndrive = lazyWithRetry(() => import("./pages/Opensigndrive"));
 const ManageSign = lazyWithRetry(() => import("./pages/Managesign"));
 const AddAdmin = lazyWithRetry(() => import("./pages/AddAdmin"));
@@ -99,6 +100,7 @@ function App() {
               <Route path="/report/:id" element={<Report />} />
               <Route path="/dashboard/:id" element={<Dashboard />} />
               <Route path="/profile" element={<Lazy Page={UserProfile} />} />
+              <Route path="/company-documents" element={<Lazy Page={CompanyDocuments} />} />
               <Route path="/drive" element={<Lazy Page={Opensigndrive} />} />
               <Route path="/managesign" element={<Lazy Page={ManageSign} />} />
               <Route

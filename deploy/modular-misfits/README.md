@@ -70,6 +70,7 @@ The Linux host must keep port `3100` bound to loopback. Public HTTP traffic
 enters only through Cloudflare Tunnel; PostgreSQL is never published.
 
 For employee read-only access across document owners, see [Company documents](COMPANY-DOCUMENTS.md).
+For authenticated blank Word downloads in Templates, see [Blank NDA Word files](BLANK-NDA-WORD.md).
 
 For a workstation-hosted production deployment, run `watchdog.sh` from a user
 LaunchAgent at login and once per minute. The watchdog starts Docker Desktop when

@@ -8,6 +8,7 @@ import Tooltip from "../../primitives/Tooltip";
 import ShareButton from "../../primitives/ShareButton";
 import Tour from "../../primitives/Tour";
 import Parse from "parse";
+import BlankNdaWordTemplates from "./BlankNdaWordTemplates";
 import {
   copytoData,
   fetchUrl,
@@ -1074,6 +1075,7 @@ const TemplatesReport = (props) => {
         </div>
       )}
       <div className="p-2 w-full bg-base-100 text-base-content op-card shadow-lg">
+        {!isDashboard && <BlankNdaWordTemplates />}
         {alertMsg.message && (
           <Alert type={alertMsg.type}>{alertMsg.message}</Alert>
         )}
